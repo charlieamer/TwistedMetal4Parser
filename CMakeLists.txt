@@ -6,7 +6,6 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/madler/zlib.git
 )
 FetchContent_MakeAvailable(zlib)
-FetchContent_GetProperties(zlib)
 
 project(TwistedMetal4Parser)
 
@@ -20,5 +19,5 @@ project(TwistedMetal4Parser)
 # endforeach()
 
 add_executable(mr-info src/main.cpp)
-target_link_libraries(mr-info zlib)
+target_link_libraries(mr-info zlibstatic)
 target_include_directories(mr-info PRIVATE ${zlib_SOURCE_DIR} ${zlib_BINARY_DIR})
