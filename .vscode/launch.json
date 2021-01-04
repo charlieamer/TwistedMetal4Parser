@@ -5,11 +5,11 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "(Windows) Launch",
+      "name": "MR info",
       "type": "cppvsdbg",
       "request": "launch",
       "program": "${command:cmake.launchTargetPath}",
-      "args": ["C:\\Users\\amer_\\Dropbox\\iso\\DATA\\YARD.MR"],
+      "args": ["C:\\Users\\amer_\\Dropbox\\iso\\DATA\\YARD.MR", "C:\\Users\\amer_\\Dropbox\\iso\\DATA\\YARD.obj"],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "environment": [],
