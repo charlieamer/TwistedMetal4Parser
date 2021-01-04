@@ -16,6 +16,25 @@ void AppendToBuffer(vector<byte_t>& data, T value) {
     }
 }
 
+template<typename T>
+T GetIntFromBuffer(const vector<byte_t>& data, size_t offset = 0) {
+    T ret;
+    memcpy(&ret, data.data() + offset, sizeof(T));
+    return ret;
+}
+
+vector<string> splitString(string str, string sep){
+    char* cstr=const_cast<char*>(str.c_str());
+    char* current;
+    vector<string> arr;
+    current=strtok(cstr,sep.c_str());
+    while(current!=NULL){
+        arr.push_back(current);
+        current=strtok(NULL,sep.c_str());
+    }
+    return arr;
+}
+
 struct Namable {
     string name;
     size_t nameLength;
@@ -185,6 +204,32 @@ struct Node : public Namable {
             child.appendToFile(data);
         }
     }
+    Node* getChildByPath(vector<string> splitted) {
+        if (splitted.size() == 0) {
+            return nullptr;
+        }
+        for (auto& child : children) {
+            if (child.name == splitted[0]) {
+                if (splitted.size() == 1) {
+                    return &child;
+                } else {
+                    return child.getChildByPath(vector<string>(splitted.begin() + 1, splitted.end()));
+                }
+            }
+        }
+        return nullptr;
+    }
+    Node* getChildByPath(string path) {
+        return getChildByPath(splitString(path, "/"));
+    }
+    Component* getAttributeByName(string name) {
+        for (auto& component: components) {
+            if (component.name == name) {
+                return &component;
+            }
+        }
+        return nullptr;
+    }
 };
 
 Node* LoadFromFile(const char* path) {
@@ -227,4 +272,21 @@ int main(int argc, const char* argv[]) {
     cout << argv[1] << endl;
     Node* root = LoadFromFile(argv[1]);
     root->printRecursively();
+    Node* node = root->getChildByPath("objects/teleporter/instances/startup/south");
+    if (node == nullptr) {
+        cout << "NOT FOUND";
+    } else {
+        auto& data = node->getAttributeByName("pos")->data;
+        int16_t x = GetIntFromBuffer<int16_t>(data, 0);
+        int16_t y = GetIntFromBuffer<int16_t>(data, 2);
+        int16_t z = GetIntFromBuffer<int16_t>(data, 4);
+        cout << x << " x " << y << " x " << z << endl;
+        x = 600;
+        data[0] = x & 0xFF;
+        data[1] = ((x >> 8) & 0xFF);
+    }
+    char tmp[1000];
+    strcpy(tmp, argv[1]);
+    strcat(tmp, "_");
+    SaveToFile(root, tmp);
 }
