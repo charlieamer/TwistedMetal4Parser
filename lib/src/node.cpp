@@ -134,7 +134,7 @@ Node *LoadFromFile(const char *path)
   buffer.insert(buffer.begin(), istreambuf_iterator<char>(infile), istreambuf_iterator<char>());
   if (buffer[0] != 0x67 || buffer[1] != 0x00 || buffer[2] != 0xCC || buffer[3] != 0xCC)
   {
-    throw runtime_error("File magic header doesn't match");
+    //throw runtime_error("File magic header doesn't match");
   }
   buffer.erase(buffer.begin(), buffer.begin() + 4);
   cout << length << " bytes\n";

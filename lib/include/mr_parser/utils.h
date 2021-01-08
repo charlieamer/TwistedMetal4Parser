@@ -37,12 +37,26 @@ struct Pos3D {
 };
 vector<Pos3D> getListOfVerticesForMap(Node* root);
 
+struct Color {
+  uint8_t r,g,b;
+  float red() {
+    return r / 255.0f;
+  }
+  float green() {
+    return g / 255.0f;
+  }
+  float blue() {
+    return b / 255.0f;
+  }
+};
+
 struct MapFaceInfo {
   bool isTransparent;
   bool isShaded;
   vector<int> vertexIndicesInMapSquare;
   uint32_t shaderOffset;
   uint32_t offsetInBuffer;
+  vector<Color> colors;
 };
 vector<MapFaceInfo> getListOfFacesForMap(Node* root);
 int getIndexOfFaceByOffset(const vector<MapFaceInfo>& faces, uint32_t desiredOffsetInBuffer);
@@ -55,6 +69,9 @@ struct SquareDrawInfo {
 };
 struct SquareInfo {
   byte_t unused[0x28];
-  SquareDrawInfo drawInfos[2];
+  // high quality faces
+  SquareDrawInfo highLOD;
+  // low quality faces
+  SquareDrawInfo lowLOD;
 };
 vector<SquareInfo> getListOfSquaresForMap(Node* root);

@@ -41,9 +41,11 @@ vector<Pos3D> getListOfVerticesForMap(Node* root) {
 
 
 #define TEXTURED_TRIANGLE__OPAQUE 0x24
+#define TEXTURED_TRIANGLE__SEMI_TRANSPARENT 0x26
 #define TEXTURED_QUAD__OPAQUE 0x2c
 #define TEXTURED_QUAD__SEMI_TRANSPARENT 0x2e
 #define SHADED_TEXTURED_TRIANGLE__OPAQUE 0x34
+#define SHADED_TEXTURED_TRIANGLE__SEMI_TRANSPARENT 0x36
 #define SHADED_TEXTURED_QUAD__OPAQUE 0x3c
 #define SHADED_TEXTURED_QUAD__SEMI_TRANSPARENT 0x3e
 
@@ -63,33 +65,41 @@ vector<MapFaceInfo> getListOfFacesForMap(Node* root) {
     if (specialByte != TEXTURED_TRIANGLE__OPAQUE &&
         specialByte != TEXTURED_QUAD__OPAQUE &&
         specialByte != TEXTURED_QUAD__SEMI_TRANSPARENT &&
+        specialByte != TEXTURED_TRIANGLE__SEMI_TRANSPARENT &&
         specialByte != SHADED_TEXTURED_TRIANGLE__OPAQUE &&
         specialByte != SHADED_TEXTURED_QUAD__OPAQUE &&
-        specialByte != SHADED_TEXTURED_QUAD__SEMI_TRANSPARENT
+        specialByte != SHADED_TEXTURED_QUAD__SEMI_TRANSPARENT &&
+        specialByte != SHADED_TEXTURED_TRIANGLE__SEMI_TRANSPARENT
     ) {
       throw runtime_error("Unknown special byte in face");
     }
 
     byte_t numVertices = (specialByte == TEXTURED_TRIANGLE__OPAQUE ||
-                          specialByte == SHADED_TEXTURED_TRIANGLE__OPAQUE) ? 3 : 4;
+                          specialByte == SHADED_TEXTURED_TRIANGLE__OPAQUE ||
+                          specialByte == SHADED_TEXTURED_TRIANGLE__SEMI_TRANSPARENT ||
+                          specialByte == TEXTURED_TRIANGLE__SEMI_TRANSPARENT) ? 3 : 4;
     faceInfo.isShaded = (specialByte == SHADED_TEXTURED_TRIANGLE__OPAQUE ||
                          specialByte == SHADED_TEXTURED_QUAD__OPAQUE ||
-                         specialByte == SHADED_TEXTURED_QUAD__SEMI_TRANSPARENT);
+                         specialByte == SHADED_TEXTURED_QUAD__SEMI_TRANSPARENT ||
+                         specialByte == SHADED_TEXTURED_TRIANGLE__SEMI_TRANSPARENT);
     faceInfo.isTransparent = (specialByte == SHADED_TEXTURED_QUAD__SEMI_TRANSPARENT ||
-                              specialByte == TEXTURED_QUAD__SEMI_TRANSPARENT);
+                              specialByte == TEXTURED_QUAD__SEMI_TRANSPARENT ||
+                              specialByte == SHADED_TEXTURED_TRIANGLE__SEMI_TRANSPARENT ||
+                              specialByte == TEXTURED_TRIANGLE__SEMI_TRANSPARENT);
 
-    byte_t specialByteForSize = specialByte & 0xfc;
-    byte_t sizeInBuffer = 0xff;
-    if (specialByteForSize == 0x34 || specialByteForSize == 0x3c) {
-      sizeInBuffer = 24;
-    } else if (specialByteForSize == 0x24 || specialByteForSize == 0x2c) {
-      sizeInBuffer = 16;
-    }
+    byte_t sizeInBuffer = faceInfo.isShaded ? 24 : 16;
+
     if (sizeInBuffer == 0xff) {
       throw runtime_error("Couldn't determine size of face");
     }
+    const static byte_t colorOffsets[] = {0, 8, 12, 16};
     for (byte_t i=0; i<numVertices; i++) {
       faceInfo.vertexIndicesInMapSquare.push_back(dataPtr[4 + i]);
+      if (faceInfo.isShaded) {
+        Color color;
+        memcpy(&color, dataPtr + colorOffsets[i], sizeof(Color));
+        faceInfo.colors.push_back(color);
+      }
     }
     faceInfo.shaderOffset = GetIntFromBuffer<uint32_t>(dataPtr, sizeInBuffer - 4);
     faceInfo.offsetInBuffer = dataPtr - faceData->data.data();
