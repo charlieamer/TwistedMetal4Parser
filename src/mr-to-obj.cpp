@@ -6,15 +6,16 @@ using namespace std;
 
 #define VERT_OFFSET(offset) (startingVertexIndex + (uint16_t)offset + (uint16_t)1)
 
+// Not so perfect MR-to-OBJ converter. There is a lot room for improvement.
 int main(int argc, const char *argv[]) {
-  if (argc < 3)
+  if (argc < 2)
   {
-    cout << "Usage: " << argv[0] << " file.mr output.obj\n";
+    cout << "Usage: " << argv[0] << " file.mr\n";
     return 1;
   }
   Node *root = LoadFromFile(argv[1]);
   vector<Pos3D> vertices = getListOfVerticesForMap(root);
-  ofstream out(argv[2], ios::binary);
+  ofstream out(replaceFileExtension(argv[1], "obj"), ios::binary);
   cout << vertices.size() << " vertices\n";
   vector<MapFaceInfo> faces = getListOfFacesForMap(root);
   cout << faces.size() << " faces\n";
@@ -68,6 +69,5 @@ int main(int argc, const char *argv[]) {
                         VERT_OFFSET(face.vertexIndicesInMapSquare[0]) << endl;
       }
     }
-    // break;
   }
 }

@@ -2,6 +2,14 @@
 #include <iostream>
 #include "mr_parser/utils.h"
 
+string replaceFileExtension(string fileName, string newExtension) {
+  auto lastDot = fileName.find_last_of('.');
+  if (lastDot != string::npos) {
+    fileName = fileName.substr(0, lastDot);
+  }
+  return fileName + "." + newExtension;
+}
+
 vector<string> splitString(string target, string delim)
 {
   vector<string> v;

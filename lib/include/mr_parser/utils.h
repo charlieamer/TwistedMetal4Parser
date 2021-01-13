@@ -5,6 +5,8 @@ using namespace std;
 #include "types.h"
 #include "node.h"
 
+string replaceFileExtension(string fileName, string newExtension);
+
 template <typename T>
 void AppendToBuffer(vector<byte_t> &data, T value)
 {
