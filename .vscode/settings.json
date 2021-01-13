@@ -45,6 +45,7 @@
     "xtree": "cpp",
     "xutility": "cpp",
     "vector": "cpp",
-    "sstream": "cpp"
+    "sstream": "cpp",
+    "filesystem": "cpp"
   }
 }
