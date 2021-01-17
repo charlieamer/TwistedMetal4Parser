@@ -7,17 +7,30 @@
 // MSDN recommends against using getcwd & chdir names
 #define cwd _getcwd
 #define cd _chdir
+#define mkd _mkdir
 #else
 #include "unistd.h"
 #define cwd getcwd
 #define cd chdir
+#define mkd(path) mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
 #endif
 using namespace std;
 
+bool exists(const char *fname)
+{
+    FILE *file;
+    if ((file = fopen(fname, "r")))
+    {
+        fclose(file);
+        return true;
+    }
+    return false;
+}
+
 void Extract(const Node* node) {
     // mkdir name
-    if (!filesystem::exists(node->name.c_str())) {
-        filesystem::create_directory(node->name.c_str());
+    if (!exists(node->name.c_str())) {
+        mkd(node->name.c_str());
     }
     // cd name
     cd(node->name.c_str());
@@ -47,4 +60,13 @@ int main(int argc, const char *argv[])
             Extract(root);
         }
     }
+    // Node* os = root->getChildByPath("os");
+    // ofstream functionNames("names.txt");
+    // functionNames << "{";
+    // if (os != nullptr) {
+    //     for (const Component& attribute : os->components) {
+    //         functionNames << "'" << attribute.name << "': " << attribute.getDataAs<uint32_t>() << ",";
+    //     }
+    // }
+    // functionNames << "}";
 }

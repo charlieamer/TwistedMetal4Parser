@@ -77,3 +77,12 @@ struct SquareInfo {
   SquareDrawInfo lowLOD;
 };
 vector<SquareInfo> getListOfSquaresForMap(Node* root);
+
+struct ShaderInfo {
+  uint8_t u1, v1;
+  uint16_t pallete;
+  uint8_t u2, v2;
+  uint16_t texpage;
+  uint8_t u3, v3;
+  uint8_t u4, v4;
+};

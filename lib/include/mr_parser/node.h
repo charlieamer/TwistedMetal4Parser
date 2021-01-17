@@ -4,8 +4,8 @@
 
 struct Node : public Namable
 {
-  int numChildren;
-  int numAttributes;
+  uint8_t numChildren;
+  uint16_t numAttributes;
   vector<Component> components;
   vector<Node> children;
   Node(const vector<byte_t> &buffer, size_t offset = 0);

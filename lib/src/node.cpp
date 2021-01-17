@@ -7,7 +7,7 @@ Node::Node(const vector<byte_t> &buffer, size_t offset)
 {
   loadName(buffer, offset, 4);
   numChildren = buffer[offset + 1];
-  numAttributes = buffer[offset + 2];
+  memcpy(&numAttributes, buffer.data() + offset + 2, sizeof(numAttributes));
   offset += nameLength + 4;
 
   for (int i = 0; i < numAttributes; i++)

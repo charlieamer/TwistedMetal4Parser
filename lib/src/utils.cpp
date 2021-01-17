@@ -96,10 +96,6 @@ vector<MapFaceInfo> getListOfFacesForMap(Node* root) {
                               specialByte == TEXTURED_TRIANGLE__SEMI_TRANSPARENT);
 
     byte_t sizeInBuffer = faceInfo.isShaded ? 24 : 16;
-
-    if (sizeInBuffer == 0xff) {
-      throw runtime_error("Couldn't determine size of face");
-    }
     const static byte_t colorOffsets[] = {0, 8, 12, 16};
     for (byte_t i=0; i<numVertices; i++) {
       faceInfo.vertexIndicesInMapSquare.push_back(dataPtr[4 + i]);
