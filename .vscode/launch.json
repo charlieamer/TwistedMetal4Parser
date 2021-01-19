@@ -9,11 +9,11 @@
       "type": "cppvsdbg",
       "request": "launch",
       "program": "${command:cmake.launchTargetPath}",
-      "args": ["C:\\Users\\amer_\\Dropbox\\iso\\DATA\\MAIN.MR", "--extract"],
+      "args": ["C:\\Users\\amer_\\Dropbox\\iso\\DATA\\AMAZ.MR"],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}/extracted",
       "environment": [],
-      "externalConsole": false
+      "externalConsole": true
     }
   ]
 }

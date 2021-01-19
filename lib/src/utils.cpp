@@ -123,6 +123,31 @@ int getIndexOfFaceByOffset(const vector<MapFaceInfo>& faces, uint32_t desiredOff
   return -1;
 }
 
+uint16_t ShaderInfo::getClutX() {
+  return (pallete & 0b00000000'00111111) * 16;
+}
+
+
+uint16_t ShaderInfo::getClutY() {
+  return (pallete & 0b01111111'11000000) >> 6;
+}
+
+CLUT_MODE ShaderInfo::getClutMode() {
+  return (CLUT_MODE)((texpage & 0b00000001'10000000) >> 7);
+}
+
+SEMI_TRANSPARENCY_MODE ShaderInfo::getTransparencyMode() {
+  return (SEMI_TRANSPARENCY_MODE)((texpage & 0b00000000'01100000) >> 5);
+}
+
+uint16_t ShaderInfo::getTexturePageX() {
+  return (texpage & 0b00000000'00001111) * 64;
+}
+
+uint16_t ShaderInfo::getTexturePageY() {
+  return ((texpage & 0b00000000'00010000) >> 4) * 256;
+}
+
 vector<SquareInfo> getListOfSquaresForMap(Node* root) {
   Node* squares = root->getChildByPath("world/squares");
   if (squares == nullptr) {
@@ -136,4 +161,54 @@ vector<SquareInfo> getListOfSquaresForMap(Node* root) {
   ret.resize(squareData->data.size() / sizeof(SquareInfo));
   memcpy(ret.data(), squareData->data.data(), squareData->data.size());
   return ret;
+}
+
+vector<ShaderInfo> getListOfShaderInfoForMap(Node* root) {
+  Node* displayPolys = root->getChildByPath("world/displayPolys");
+  if (displayPolys == nullptr) {
+    throw runtime_error("world/displayPolys not found. Maybe this is not a map file?");
+  }
+  Component* shaderInfo = displayPolys->getAttributeByName("shaderData");
+  if (shaderInfo == nullptr) {
+    throw runtime_error("world/displayPolys doesn't contain shaderData component.");
+  }
+  vector<ShaderInfo> ret;
+  ret.resize(shaderInfo->data.size() / sizeof(ShaderInfo));
+  memcpy(ret.data(), shaderInfo->data.data(), shaderInfo->data.size());
+  return ret;
+}
+
+MapTexture genericGetMapTexture(Node* textureRoot, string attributeName) {
+  Node* world = textureRoot->getChildByPath("world");
+  if (world == nullptr) {
+    throw runtime_error("world in texture not found.");
+  }
+  Component* texture = world->getAttributeByName(attributeName);
+  if (texture == nullptr) {
+    throw runtime_error("world node in texture doesn't contain texture data");
+  }
+  MapTexture ret;
+  memcpy(&ret.header, texture->data.data(), sizeof(MapTextureHeader));
+  if (texture->data.size() - sizeof(MapTextureHeader) != ret.header.halfWidth * 2 * ret.header.height ) {
+    throw runtime_error("invalide texture size");
+  }
+  ret.data.resize(ret.header.halfWidth * 2);
+  for (auto& column : ret.data) {
+    column.resize(ret.header.height);
+  }
+  size_t index = 0;
+  for (uint16_t y = 0; y < ret.header.height; y++) {
+    for (uint16_t x = 0; x < ret.header.halfWidth * 2; x++) {
+      ret.data[x][y] = texture->data[sizeof(MapTextureHeader) + index++];
+    }
+  }
+  return ret;
+}
+
+MapTexture getMapTexture(Node* textureRoot) {
+  return genericGetMapTexture(textureRoot, "world.bit");
+}
+
+MapTexture getMapClut(Node* textureRoot) {
+  return genericGetMapTexture(textureRoot, "world.clt");
 }

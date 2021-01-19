@@ -36,11 +36,18 @@ vector<string> splitString(string str, string sep);
 
 struct Pos3D {
   int16_t x, y, z, unused;
+
+  bool operator==(const Pos3D& other) const {
+    return x == other.x && y == other.y && z == other.z;
+  }
 };
 vector<Pos3D> getListOfVerticesForMap(Node* root);
 
 struct Color {
   uint8_t r,g,b;
+  bool operator==(const Color& other) const {
+    return r == other.r && g == other.g && b == other.b;
+  }
   float red() {
     return r / 255.0f;
   }
@@ -78,6 +85,17 @@ struct SquareInfo {
 };
 vector<SquareInfo> getListOfSquaresForMap(Node* root);
 
+enum CLUT_MODE : uint8_t {
+  CLUT_4_BIT,
+  CLUT_8_BIT,
+  CLUT_DIRECT
+};
+enum SEMI_TRANSPARENCY_MODE : uint8_t {
+  TRANSPARENCY_MODE_ALPHA,
+  TRANSPARENCY_MODE_FULL,
+  TRANSPARENCY_MODE_FULL_INVERTED,
+  TRANSPARENCY_MODE_QUARTER
+};
 struct ShaderInfo {
   uint8_t u1, v1;
   uint16_t pallete;
@@ -85,4 +103,37 @@ struct ShaderInfo {
   uint16_t texpage;
   uint8_t u3, v3;
   uint8_t u4, v4;
+
+  uint16_t getClutX();
+  uint16_t getClutY();
+
+  CLUT_MODE getClutMode();
+  SEMI_TRANSPARENCY_MODE getTransparencyMode();
+  uint16_t getTexturePageX();
+  uint16_t getTexturePageY();
 };
+vector<ShaderInfo> getListOfShaderInfoForMap(Node* root);
+
+struct MapTextureHeader {
+  uint16_t offsetX;
+  uint16_t offsetY;
+  uint16_t halfWidth;
+  uint16_t height;
+};
+
+struct RGBA {
+  uint8_t R;
+  uint8_t G;
+  uint8_t B;
+  uint8_t A;
+};
+
+struct MapTexture {
+  MapTextureHeader header;
+  vector<vector<byte_t>> data;
+};
+
+MapTexture getMapTexture(Node* textureRoot);
+MapTexture getMapClut(Node* textureRoot);
+
+// http://www.psxdev.net/forum/viewtopic.php?t=953
