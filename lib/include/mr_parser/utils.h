@@ -6,6 +6,7 @@ using namespace std;
 #include "node.h"
 
 string replaceFileExtension(string fileName, string newExtension);
+string getFileName(string fullPath);
 
 template <typename T>
 void AppendToBuffer(vector<byte_t> &data, T value)
@@ -48,13 +49,13 @@ struct Color {
   bool operator==(const Color& other) const {
     return r == other.r && g == other.g && b == other.b;
   }
-  float red() {
+  float red() const {
     return r / 255.0f;
   }
-  float green() {
+  float green() const {
     return g / 255.0f;
   }
-  float blue() {
+  float blue() const {
     return b / 255.0f;
   }
 };

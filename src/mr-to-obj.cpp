@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <set>
 #include <lodepng.h>
 using namespace std;
 
@@ -27,6 +28,57 @@ struct VertexWithColor {
   }
 };
 
+struct UvRect {
+  uint8_t minu, maxu, minv, maxv;
+  UvRect(const ShaderInfo& shader, size_t numVertices) {
+    minu = 255, maxu = 0, minv = 255, maxv = 0;
+    minu = min(minu, shader.u1);
+    minu = min(minu, shader.u2);
+    minu = min(minu, shader.u3);
+    if (numVertices == 4)
+      minu = min(minu, shader.u4);
+    minv = min(minv, shader.v1);
+    minv = min(minv, shader.v2);
+    minv = min(minv, shader.v3);
+    if (numVertices == 4)
+      minv = min(minv, shader.v4);
+    maxu = max(maxu, shader.u1);
+    maxu = max(maxu, shader.u2);
+    maxu = max(maxu, shader.u3);
+    if (numVertices == 4)
+      maxu = max(maxu, shader.u4);
+    maxv = max(maxv, shader.v1);
+    maxv = max(maxv, shader.v2);
+    maxv = max(maxv, shader.v3);
+    if (numVertices == 4)
+      maxv = max(maxv, shader.v4);
+  }
+  int getTexCoordIndex(uint8_t u, uint8_t v) const {
+    int bitX = (int)round((float)(u - minu) / (float)(maxu - minu));
+    if (minu == maxu) {
+      bitX = 0;
+    }
+    int bitY = (int)round((float)(v - minv) / (float)(maxv - minv));
+    if (minv == maxv) {
+      bitY = 0;
+    }
+    return bitX | (bitY << 1);
+  }
+  int getTexCoordIndex(const ShaderInfo& shader, size_t vertexIndex) const {
+    switch(vertexIndex) {
+      case 0:
+      return getTexCoordIndex(shader.u1, shader.v1);
+      case 1:
+      return getTexCoordIndex(shader.u2, shader.v2);
+      case 2:
+      return getTexCoordIndex(shader.u3, shader.v3);
+      case 3:
+      return getTexCoordIndex(shader.u4, shader.v4);
+    }
+    return 0;
+  }
+};
+
 struct FaceWithExtraInfo {
   MapFaceInfo face;
   ShaderInfo shader;
@@ -34,34 +86,11 @@ struct FaceWithExtraInfo {
 };
 
 string textureNameFromShader(const FaceWithExtraInfo& face) {
-  uint8_t minu = 255, maxu = 0, minv = 255, maxv = 0;
-  minu = min(minu, face.shader.u1);
-  minu = min(minu, face.shader.u2);
-  minu = min(minu, face.shader.u3);
-  if (face.vc.size() == 4)
-    minu = min(minu, face.shader.u4);
-  minv = min(minv, face.shader.v1);
-  minv = min(minv, face.shader.v2);
-  minv = min(minv, face.shader.v3);
-  if (face.vc.size() == 4)
-    minv = min(minv, face.shader.v4);
-  maxu = max(maxu, face.shader.u1);
-  maxu = max(maxu, face.shader.u2);
-  maxu = max(maxu, face.shader.u3);
-  if (face.vc.size() == 4)
-    maxu = max(maxu, face.shader.u4);
-  maxv = max(maxv, face.shader.v1);
-  maxv = max(maxv, face.shader.v2);
-  maxv = max(maxv, face.shader.v3);
-  if (face.vc.size() == 4)
-    maxv = max(maxv, face.shader.v4);
+  UvRect uv(face.shader, face.vc.size());
   char tmp[256];
-  snprintf(tmp, 256, "textures/%dx%d_%dx%d_%x_%x.png",
-    minu, minv, maxu, maxv, face.shader.pallete, face.shader.texpage
+  snprintf(tmp, 256, "%dx%d_%dx%d_%x_%x",
+    uv.minu, uv.minv, uv.maxu, uv.maxv, face.shader.pallete, face.shader.texpage
   );
-  if (strcmp(tmp, "textures/128x128_190x190_3c55_13.png") == 0) {
-    return tmp;
-  }
   return tmp;
 }
 
@@ -114,41 +143,10 @@ TextureForExport textureFromFace(FaceWithExtraInfo face, MapTexture texture, Map
     cerr << "Unsupported CLUT mode" << endl;
     return ret;
   }
-  uint8_t minu = 255, maxu = 0, minv = 255, maxv = 0;
-  minu = min(minu, face.shader.u1);
-  minu = min(minu, face.shader.u2);
-  minu = min(minu, face.shader.u3);
-  if (face.vc.size() == 4)
-    minu = min(minu, face.shader.u4);
-  minv = min(minv, face.shader.v1);
-  minv = min(minv, face.shader.v2);
-  minv = min(minv, face.shader.v3);
-  if (face.vc.size() == 4)
-    minv = min(minv, face.shader.v4);
-  maxu = max(maxu, face.shader.u1);
-  maxu = max(maxu, face.shader.u2);
-  maxu = max(maxu, face.shader.u3);
-  if (face.vc.size() == 4)
-    maxu = max(maxu, face.shader.u4);
-  maxv = max(maxv, face.shader.v1);
-  maxv = max(maxv, face.shader.v2);
-  maxv = max(maxv, face.shader.v3);
-  if (face.vc.size() == 4)
-    maxv = max(maxv, face.shader.v4);
+  UvRect uv(face.shader, face.vc.size());
   
-  ret.width = maxu - minu + 1;
-  int actualWidth = ret.width;
-  if (clutMode == CLUT_4_BIT) {
-    actualWidth /= 4;
-    actualWidth++;
-    ret.width = actualWidth * 4;
-  }
-  if (clutMode == CLUT_8_BIT) {
-    actualWidth /= 2;
-    actualWidth++;
-    ret.width = actualWidth * 2;
-  }
-  ret.height = maxv - minv + 1;
+  ret.width = uv.maxu - uv.minu + 1;
+  ret.height = uv.maxv - uv.minv + 1;
   uint16_t lutx = face.shader.getClutX();
   uint16_t luty = face.shader.getClutY();
   vector<uint16_t> lut;
@@ -158,11 +156,11 @@ TextureForExport textureFromFace(FaceWithExtraInfo face, MapTexture texture, Map
     lut.push_back(((uint16_t)(pixel1 << 8)) | (uint16_t)pixel2);
   }
   for (int v = 0; v < ret.height; v++) {
-    for (int u = 0; u < actualWidth; u++) {
-      int x = (u + (int)face.shader.getTexturePageX() + minu) * 2 - texture.header.offsetX;
-      int y = v + (int)face.shader.getTexturePageY() + minv - texture.header.offsetY;
+    for (int u = 0; u < ret.width; u++) {
+      int x = (u + (int)face.shader.getTexturePageX() + uv.minu) * 2 - texture.header.offsetX;
+      int y = v + (int)face.shader.getTexturePageY() + uv.minv - texture.header.offsetY;
       if (x < 0 || x >= texture.header.halfWidth * 2 || y < 0 || y > texture.header.height) {
-        cerr << "Invalid texture coordinates: " << x << "x" << y << endl;
+        // cerr << "Invalid texture coordinates: " << x << "x" << y << endl;
         return ret;
       }
       uint8_t pixel1 = texture.data[x][y];
@@ -181,6 +179,11 @@ TextureForExport textureFromFace(FaceWithExtraInfo face, MapTexture texture, Map
         ret.data.push_back(getColor(lut[pixel1], face.shader.getTransparencyMode()));
         ret.data.push_back(getColor(lut[pixel2], face.shader.getTransparencyMode()));
       }
+    }
+    // remove excess pixels in width
+    size_t expectedNumOfPixels = (v + 1) * ret.width;
+    if (expectedNumOfPixels != ret.data.size()) {
+      ret.data.erase(ret.data.begin() + expectedNumOfPixels, ret.data.end());
     }
   }
   if (ret.width * ret.height != ret.data.size()) {
@@ -204,7 +207,6 @@ int main(int argc, const char *argv[]) {
   cout << "Map texture: " << texture.header.halfWidth * 2 << " x " << texture.header.height << endl;
 
   vector<Pos3D> vertices = getListOfVerticesForMap(root);
-  // ofstream out(replaceFileExtension(argv[1], "obj"), ios::binary);
   cout << vertices.size() << " vertices\n";
   vector<MapFaceInfo> faces = getListOfFacesForMap(root);
   cout << faces.size() << " faces\n";
@@ -222,7 +224,7 @@ int main(int argc, const char *argv[]) {
       //throw runtime_error("Starting face not found");
       cerr << "Starting face not found\n";
       continue;
-    } // 00 80 A1 3C 3E 80 15 00 00 BE 3E BE
+    }
     uint16_t startingVertexIndex = drawInfo.vertexStartIndex;
     for (int i=0; i<drawInfo.numFaces; i++) {
       const MapFaceInfo& face = faces[i + startingFaceIndex];
@@ -237,35 +239,86 @@ int main(int argc, const char *argv[]) {
     }
   }
 
-  // for (const SquareInfo& square : squares) {
-  //   const SquareDrawInfo& drawInfo = square.highLOD;
-  //   int startingFaceIndex = getIndexOfFaceByOffset(faces, drawInfo.faceDataOffset);
-  //   uint16_t startingVertexIndex = drawInfo.vertexStartIndex;
-  //   for (int i=0; i<drawInfo.numFaces; i++) {
-  //     const MapFaceInfo& face = faces[i + startingFaceIndex];
-  //     if (face.vertexIndicesInMapSquare.size() == 3) {
-  //       out << "f " << VERT_OFFSET(face.vertexIndicesInMapSquare[0]) << " " <<
-  //                       VERT_OFFSET(face.vertexIndicesInMapSquare[1]) << " " <<
-  //                       VERT_OFFSET(face.vertexIndicesInMapSquare[2]) << endl;
-  //     }
-  //     if (face.vertexIndicesInMapSquare.size() == 4) {
-  //       // This arrangement is compatible with with most of obj viewers
-  //       out << "f " << VERT_OFFSET(face.vertexIndicesInMapSquare[1]) << " " <<
-  //                       VERT_OFFSET(face.vertexIndicesInMapSquare[3]) << " " <<
-  //                       VERT_OFFSET(face.vertexIndicesInMapSquare[2]) << " " <<
-  //                       VERT_OFFSET(face.vertexIndicesInMapSquare[0]) << endl;
-  //     }
-  //   }
-  // }
-
-  system("mkdir textures");
+  string mapFileName = getFileName(argv[1]);
+  string textureOutputFolder = "textures-" + mapFileName;
+  system(("mkdir " + textureOutputFolder).c_str());
   for (const auto& face : facesExtra) {
-    string fname = textureNameFromShader(face);
+    string fname = textureOutputFolder + "/" + textureNameFromShader(face) + ".png";
     if (!exists(fname.c_str())) {
       TextureForExport exp = textureFromFace(face, texture, clut);
       if (exp.ok) {
         lodepng::encode(fname, (unsigned char*)(void*)exp.data.data(), exp.width, exp.height);
       }
+    }
+  }
+  ofstream out(replaceFileExtension(argv[1], "obj"), ios::binary);
+  out << "mtllib " << mapFileName << ".mtl\n";
+  out << "vt 0 0\n"
+      << "vt 0 1\n"
+      << "vt 1 0\n"
+      << "vt 1 1\n";
+  ofstream outMtl(replaceFileExtension(argv[1], "mtl"), ios::binary);
+
+  // extract vertices
+  vector<VertexWithColor> allVertices;
+  for (const auto& face : facesExtra) {
+    for (const auto& vertex : face.vc) {
+      if (find(allVertices.begin(), allVertices.end(), vertex) == allVertices.end()) {
+        allVertices.push_back(vertex);
+      }
+    }
+  }
+  // output vertices
+  for (const auto& vertex : allVertices) {
+    out << "v " << vertex.pos.x / 1000.0f << " " << -vertex.pos.y / 1000.0f << " " << vertex.pos.z / 1000.0f;
+    if (vertex.hasColor) {
+      out << " " << vertex.col.red() << " " << vertex.col.green() << " " << vertex.col.blue();
+    } else {
+      out << " 1 1 1";
+    }
+    out << endl;
+  }
+
+  // extract materials
+  set<string> createdMaterials;
+  for (const auto& face : facesExtra) {
+    string materialName = textureNameFromShader(face);
+    if (createdMaterials.find(materialName) == createdMaterials.end()) {
+      outMtl << "newmtl " << materialName << endl;
+      outMtl << "   Ka 1.000 1.000 1.000\n"
+             << "   Kd 1.000 1.000 1.000\n"
+             << "   Ks 0.000 0.000 0.000\n"
+             << "   map_Ka " << textureOutputFolder << "/" << materialName << ".png\n"
+             << "   map_Kd " << textureOutputFolder << "/" << materialName << ".png\n"
+             << "\n";
+      createdMaterials.insert(materialName);
+    }
+  }
+
+  // output faces
+  for (const auto& face : facesExtra) {
+    out << "usemtl " << textureNameFromShader(face) << endl;
+    UvRect uv(face.shader, face.vc.size());
+    if (face.face.vertexIndicesInMapSquare.size() == 3) {
+      out << "f " << (find(allVertices.begin(), allVertices.end(), face.vc[0]) - allVertices.begin()) + 1 << "/"
+                    << uv.getTexCoordIndex(face.shader, 1) + 1 << " "
+                  << (find(allVertices.begin(), allVertices.end(), face.vc[1]) - allVertices.begin()) + 1 << "/"
+                    << uv.getTexCoordIndex(face.shader, 2) + 1 << " "
+                  << (find(allVertices.begin(), allVertices.end(), face.vc[2]) - allVertices.begin()) + 1 << "/"
+                    << uv.getTexCoordIndex(face.shader, 0) + 1 << "\n";
+    }
+    if (face.face.vertexIndicesInMapSquare.size() == 4) {
+      // This arrangement is compatible with with most of obj viewers
+      // 1 3 2 0
+      // 2 0 3 1
+      out << "f " << (find(allVertices.begin(), allVertices.end(), face.vc[1]) - allVertices.begin()) + 1 << "/"
+                    << uv.getTexCoordIndex(face.shader, 3) + 1 << " "
+                  << (find(allVertices.begin(), allVertices.end(), face.vc[3]) - allVertices.begin()) + 1 << "/"
+                    << uv.getTexCoordIndex(face.shader, 2) + 1 << " "
+                  << (find(allVertices.begin(), allVertices.end(), face.vc[2]) - allVertices.begin()) + 1 << "/"
+                    << uv.getTexCoordIndex(face.shader, 0) + 1 << " "
+                  << (find(allVertices.begin(), allVertices.end(), face.vc[0]) - allVertices.begin()) + 1 << "/"
+                    << uv.getTexCoordIndex(face.shader, 1) + 1 << "\n";
     }
   }
 }

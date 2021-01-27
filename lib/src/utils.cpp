@@ -10,6 +10,24 @@ string replaceFileExtension(string fileName, string newExtension) {
   return fileName + "." + newExtension;
 }
 
+string getFileName(string filename) {
+  // Remove directory if present.
+  // Do this before extension removal incase directory has a period character.
+  const size_t last_slash_idx = filename.find_last_of("\\/");
+  if (std::string::npos != last_slash_idx)
+  {
+      filename.erase(0, last_slash_idx + 1);
+  }
+
+  // Remove extension if present.
+  const size_t period_idx = filename.rfind('.');
+  if (std::string::npos != period_idx)
+  {
+      filename.erase(period_idx);
+  }
+  return filename;
+}
+
 vector<string> splitString(string target, string delim)
 {
   vector<string> v;
