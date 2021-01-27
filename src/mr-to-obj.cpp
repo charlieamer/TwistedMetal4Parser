@@ -280,7 +280,7 @@ int main(int argc, const char *argv[]) {
     if (vertex.hasColor) {
       out << " " << vertex.col.red() << " " << vertex.col.green() << " " << vertex.col.blue();
     } else {
-      out << " 1 1 1";
+      out << " 0 0 0";
     }
     out << endl;
   }
@@ -294,7 +294,7 @@ int main(int argc, const char *argv[]) {
       outMtl << "   Ka 1.000 1.000 1.000\n"
              << "   Kd 1.000 1.000 1.000\n"
              << "   Ks 0.000 0.000 0.000\n"
-             << "   map_Ka " << textureOutputFolder << "/" << materialName << ".png\n"
+            //  << "   map_Ka " << textureOutputFolder << "/" << materialName << ".png\n"
              << "   map_Kd " << textureOutputFolder << "/" << materialName << ".png\n"
              << "\n";
       createdMaterials.insert(materialName);
@@ -306,25 +306,25 @@ int main(int argc, const char *argv[]) {
     out << "usemtl " << textureNameFromShader(face) << endl;
     UvRect uv(face.shader, face.vc.size());
     if (face.face.vertexIndicesInMapSquare.size() == 3) {
-      out << "f " << (find(allVertices.begin(), allVertices.end(), face.vc[0]) - allVertices.begin()) + 1 << "/"
-                    << uv.getTexCoordIndex(face.shader, 0) + 1 << " "
+      out << "f " << (find(allVertices.begin(), allVertices.end(), face.vc[2]) - allVertices.begin()) + 1 << "/"
+                    << uv.getTexCoordIndex(face.shader, 2) + 1 << " "
                   << (find(allVertices.begin(), allVertices.end(), face.vc[1]) - allVertices.begin()) + 1 << "/"
                     << uv.getTexCoordIndex(face.shader, 1) + 1 << " "
-                  << (find(allVertices.begin(), allVertices.end(), face.vc[2]) - allVertices.begin()) + 1 << "/"
-                    << uv.getTexCoordIndex(face.shader, 2) + 1 << "\n";
+                  << (find(allVertices.begin(), allVertices.end(), face.vc[0]) - allVertices.begin()) + 1 << "/"
+                    << uv.getTexCoordIndex(face.shader, 0) + 1 << "\n";
     }
     if (face.face.vertexIndicesInMapSquare.size() == 4) {
       // This arrangement is compatible with with most of obj viewers
       // 1 3 2 0
       // 2 0 3 1
-      out << "f " << (find(allVertices.begin(), allVertices.end(), face.vc[1]) - allVertices.begin()) + 1 << "/"
-                    << uv.getTexCoordIndex(face.shader, 1) + 1 << " "
-                  << (find(allVertices.begin(), allVertices.end(), face.vc[3]) - allVertices.begin()) + 1 << "/"
-                    << uv.getTexCoordIndex(face.shader, 3) + 1 << " "
+      out << "f " << (find(allVertices.begin(), allVertices.end(), face.vc[0]) - allVertices.begin()) + 1 << "/"
+                    << uv.getTexCoordIndex(face.shader, 0) + 1 << " "
                   << (find(allVertices.begin(), allVertices.end(), face.vc[2]) - allVertices.begin()) + 1 << "/"
                     << uv.getTexCoordIndex(face.shader, 2) + 1 << " "
-                  << (find(allVertices.begin(), allVertices.end(), face.vc[0]) - allVertices.begin()) + 1 << "/"
-                    << uv.getTexCoordIndex(face.shader, 0) + 1 << "\n";
+                  << (find(allVertices.begin(), allVertices.end(), face.vc[3]) - allVertices.begin()) + 1 << "/"
+                    << uv.getTexCoordIndex(face.shader, 3) + 1 << " "
+                  << (find(allVertices.begin(), allVertices.end(), face.vc[1]) - allVertices.begin()) + 1 << "/"
+                    << uv.getTexCoordIndex(face.shader, 1) + 1 << "\n";
     }
   }
 }
