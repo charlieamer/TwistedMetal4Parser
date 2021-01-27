@@ -105,13 +105,13 @@ struct ShaderInfo {
   uint8_t u3, v3;
   uint8_t u4, v4;
 
-  uint16_t getClutX();
-  uint16_t getClutY();
+  uint16_t getClutX() const;
+  uint16_t getClutY() const;
 
-  CLUT_MODE getClutMode();
-  SEMI_TRANSPARENCY_MODE getTransparencyMode();
-  uint16_t getTexturePageX();
-  uint16_t getTexturePageY();
+  CLUT_MODE getClutMode() const;
+  SEMI_TRANSPARENCY_MODE getTransparencyMode() const;
+  uint16_t getTexturePageX() const;
+  uint16_t getTexturePageY() const;
 };
 vector<ShaderInfo> getListOfShaderInfoForMap(Node* root);
 

@@ -62,7 +62,7 @@ struct UvRect {
     if (minv == maxv) {
       bitY = 0;
     }
-    return bitX | (bitY << 1);
+    return ((bitX << 1) | (1 - bitY)) & 0b11;
   }
   int getTexCoordIndex(const ShaderInfo& shader, size_t vertexIndex) const {
     switch(vertexIndex) {
@@ -132,12 +132,35 @@ RGBA getColor(uint16_t color, SEMI_TRANSPARENCY_MODE mode) {
   return { 255, 0, 255, 255 };
 }
 
-TextureForExport textureFromFace(FaceWithExtraInfo face, MapTexture texture, MapTexture clut) {
+class invalid_coordinates_error : public exception {};
+
+uint8_t getPixelIndex(const MapTexture& texture, int x, int y, int minu, int minv, uint16_t texpageX, uint16_t texpageY, CLUT_MODE clutMode) {
+  if (clutMode == CLUT_4_BIT) {
+    int xx = texpageX * 2 + x / 2 + minu / 2 - texture.header.offsetX * 2;
+    int yy = texpageY + minv + y - texture.header.offsetY;
+    if (xx < 0 || xx >= texture.header.halfWidth * 2 || yy < 0 || yy > texture.header.height) {
+      throw invalid_coordinates_error();
+    }
+    uint8_t value = texture.data[xx][yy];
+    if (x % 2 == 1) {
+      return (uint8_t)(value >> 4);
+    } else {
+      return value & 0xF;
+    }
+  } else {
+    int xx = texpageX * 2 + x + minu - texture.header.offsetX;
+    int yy = texpageY + minv + y - texture.header.offsetY;
+    if (xx < 0 || xx >= texture.header.halfWidth * 2 || yy < 0 || yy > texture.header.height) {
+      throw invalid_coordinates_error();
+    }
+    uint8_t value = texture.data[xx][yy];
+    return value;
+  }
+}
+
+TextureForExport textureFromFace(const FaceWithExtraInfo& face, const MapTexture& texture, const MapTexture& clut) {
   TextureForExport ret;
   ret.ok = false;
-  if (face.face.shaderOffset == 0x2AA38) {
-    ret.ok = false;
-  }
   CLUT_MODE clutMode = face.shader.getClutMode();
   if (clutMode == CLUT_DIRECT) {
     cerr << "Unsupported CLUT mode" << endl;
@@ -157,33 +180,16 @@ TextureForExport textureFromFace(FaceWithExtraInfo face, MapTexture texture, Map
   }
   for (int v = 0; v < ret.height; v++) {
     for (int u = 0; u < ret.width; u++) {
-      int x = (u + (int)face.shader.getTexturePageX() + uv.minu) * 2 - texture.header.offsetX;
-      int y = v + (int)face.shader.getTexturePageY() + uv.minv - texture.header.offsetY;
-      if (x < 0 || x >= texture.header.halfWidth * 2 || y < 0 || y > texture.header.height) {
-        // cerr << "Invalid texture coordinates: " << x << "x" << y << endl;
+      try {
+        uint8_t index = getPixelIndex(
+          texture, u, v, uv.minu, uv.minv,
+          face.shader.getTexturePageX(), face.shader.getTexturePageY(), clutMode
+        );
+        ret.data.push_back(getColor(lut[index], face.shader.getTransparencyMode()));
+      } catch(invalid_coordinates_error) {
+        cerr << "Invalid texture coordinates\n";
         return ret;
       }
-      uint8_t pixel1 = texture.data[x][y];
-      uint8_t pixel2 = texture.data[x+1][y];
-      if (clutMode == CLUT_4_BIT) {
-        uint8_t lut1 = pixel1 & 0x0F;
-        uint8_t lut2 = (pixel1 & 0xF0) >> 4;
-        uint8_t lut3 = pixel2 & 0x0F;
-        uint8_t lut4 = (pixel2 & 0xF0) >> 4;
-        ret.data.push_back(getColor(lut[lut1], face.shader.getTransparencyMode()));
-        ret.data.push_back(getColor(lut[lut2], face.shader.getTransparencyMode()));
-        ret.data.push_back(getColor(lut[lut3], face.shader.getTransparencyMode()));
-        ret.data.push_back(getColor(lut[lut4], face.shader.getTransparencyMode()));
-      }
-      if (clutMode == CLUT_8_BIT) {
-        ret.data.push_back(getColor(lut[pixel1], face.shader.getTransparencyMode()));
-        ret.data.push_back(getColor(lut[pixel2], face.shader.getTransparencyMode()));
-      }
-    }
-    // remove excess pixels in width
-    size_t expectedNumOfPixels = (v + 1) * ret.width;
-    if (expectedNumOfPixels != ret.data.size()) {
-      ret.data.erase(ret.data.begin() + expectedNumOfPixels, ret.data.end());
     }
   }
   if (ret.width * ret.height != ret.data.size()) {
@@ -270,7 +276,7 @@ int main(int argc, const char *argv[]) {
   }
   // output vertices
   for (const auto& vertex : allVertices) {
-    out << "v " << vertex.pos.x / 1000.0f << " " << -vertex.pos.y / 1000.0f << " " << vertex.pos.z / 1000.0f;
+    out << "v " << -vertex.pos.x / 1000.0f << " " << -vertex.pos.y / 1000.0f << " " << vertex.pos.z / 1000.0f;
     if (vertex.hasColor) {
       out << " " << vertex.col.red() << " " << vertex.col.green() << " " << vertex.col.blue();
     } else {
@@ -301,24 +307,24 @@ int main(int argc, const char *argv[]) {
     UvRect uv(face.shader, face.vc.size());
     if (face.face.vertexIndicesInMapSquare.size() == 3) {
       out << "f " << (find(allVertices.begin(), allVertices.end(), face.vc[0]) - allVertices.begin()) + 1 << "/"
-                    << uv.getTexCoordIndex(face.shader, 1) + 1 << " "
+                    << uv.getTexCoordIndex(face.shader, 0) + 1 << " "
                   << (find(allVertices.begin(), allVertices.end(), face.vc[1]) - allVertices.begin()) + 1 << "/"
-                    << uv.getTexCoordIndex(face.shader, 2) + 1 << " "
+                    << uv.getTexCoordIndex(face.shader, 1) + 1 << " "
                   << (find(allVertices.begin(), allVertices.end(), face.vc[2]) - allVertices.begin()) + 1 << "/"
-                    << uv.getTexCoordIndex(face.shader, 0) + 1 << "\n";
+                    << uv.getTexCoordIndex(face.shader, 2) + 1 << "\n";
     }
     if (face.face.vertexIndicesInMapSquare.size() == 4) {
       // This arrangement is compatible with with most of obj viewers
       // 1 3 2 0
       // 2 0 3 1
       out << "f " << (find(allVertices.begin(), allVertices.end(), face.vc[1]) - allVertices.begin()) + 1 << "/"
-                    << uv.getTexCoordIndex(face.shader, 3) + 1 << " "
+                    << uv.getTexCoordIndex(face.shader, 1) + 1 << " "
                   << (find(allVertices.begin(), allVertices.end(), face.vc[3]) - allVertices.begin()) + 1 << "/"
-                    << uv.getTexCoordIndex(face.shader, 2) + 1 << " "
+                    << uv.getTexCoordIndex(face.shader, 3) + 1 << " "
                   << (find(allVertices.begin(), allVertices.end(), face.vc[2]) - allVertices.begin()) + 1 << "/"
-                    << uv.getTexCoordIndex(face.shader, 0) + 1 << " "
+                    << uv.getTexCoordIndex(face.shader, 2) + 1 << " "
                   << (find(allVertices.begin(), allVertices.end(), face.vc[0]) - allVertices.begin()) + 1 << "/"
-                    << uv.getTexCoordIndex(face.shader, 1) + 1 << "\n";
+                    << uv.getTexCoordIndex(face.shader, 0) + 1 << "\n";
     }
   }
 }

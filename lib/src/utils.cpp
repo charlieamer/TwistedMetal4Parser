@@ -141,28 +141,28 @@ int getIndexOfFaceByOffset(const vector<MapFaceInfo>& faces, uint32_t desiredOff
   return -1;
 }
 
-uint16_t ShaderInfo::getClutX() {
+uint16_t ShaderInfo::getClutX() const {
   return (pallete & 0b00000000'00111111) * 16;
 }
 
 
-uint16_t ShaderInfo::getClutY() {
+uint16_t ShaderInfo::getClutY() const {
   return (pallete & 0b01111111'11000000) >> 6;
 }
 
-CLUT_MODE ShaderInfo::getClutMode() {
+CLUT_MODE ShaderInfo::getClutMode() const {
   return (CLUT_MODE)((texpage & 0b00000001'10000000) >> 7);
 }
 
-SEMI_TRANSPARENCY_MODE ShaderInfo::getTransparencyMode() {
+SEMI_TRANSPARENCY_MODE ShaderInfo::getTransparencyMode() const {
   return (SEMI_TRANSPARENCY_MODE)((texpage & 0b00000000'01100000) >> 5);
 }
 
-uint16_t ShaderInfo::getTexturePageX() {
+uint16_t ShaderInfo::getTexturePageX() const {
   return (texpage & 0b00000000'00001111) * 64;
 }
 
-uint16_t ShaderInfo::getTexturePageY() {
+uint16_t ShaderInfo::getTexturePageY() const {
   return ((texpage & 0b00000000'00010000) >> 4) * 256;
 }
 
