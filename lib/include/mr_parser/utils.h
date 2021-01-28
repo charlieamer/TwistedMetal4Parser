@@ -123,10 +123,10 @@ struct MapTextureHeader {
 };
 
 struct RGBA {
-  uint8_t R;
-  uint8_t G;
-  uint8_t B;
-  uint8_t A;
+  uint8_t R = 0;
+  uint8_t G = 0;
+  uint8_t B = 0;
+  uint8_t A = 0;
 };
 
 struct MapTexture {
