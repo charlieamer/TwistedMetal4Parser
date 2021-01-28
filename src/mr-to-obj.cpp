@@ -167,31 +167,26 @@ void setFaceUVs(FaceWithExtraInfo& face, const MapTextureHeader& textureHeader, 
   int offY = (clutMode == CLUT_4_BIT) ? 0 : textureHeader.height;
   int x;
   int y;
+  float halfPixelW = 1.0f / (float)outputTextureWidth / 2.0f;
+  float halfPixelH = 1.0f / (float)outputTextureHeight / 2.0f;
   x = face.shader.u1 + face.shader.getTexturePageX() * mulX - textureHeader.offsetX;
   y = face.shader.v1 + face.shader.getTexturePageY() - textureHeader.offsetY + offY;
-  x += (numberOfLowerValues(face.shader.u1, face.shader.u2, face.shader.u3, face.shader.u4)) >= 2;
-  y += (numberOfLowerValues(face.shader.v1, face.shader.v2, face.shader.v3, face.shader.v4)) >= 2;
-  face.vc[0].u = (float)x / (float)outputTextureWidth;
-  face.vc[0].v = (float)y / (float)outputTextureHeight;
+  face.vc[0].u = (float)x / (float)outputTextureWidth + halfPixelW;
+  face.vc[0].v = (float)y / (float)outputTextureHeight + halfPixelH;
+
   x = face.shader.u2 + face.shader.getTexturePageX() * mulX - textureHeader.offsetX;
   y = face.shader.v2 + face.shader.getTexturePageY() - textureHeader.offsetY + offY;
-  x += (numberOfLowerValues(face.shader.u2, face.shader.u1, face.shader.u3, face.shader.u4)) >= 2;
-  y += (numberOfLowerValues(face.shader.v2, face.shader.v1, face.shader.v3, face.shader.v4)) >= 2;
-  face.vc[1].u = (float)x / (float)outputTextureWidth;
-  face.vc[1].v = (float)y / (float)outputTextureHeight;
+  face.vc[1].u = (float)x / (float)outputTextureWidth + halfPixelW;
+  face.vc[1].v = (float)y / (float)outputTextureHeight + halfPixelH;
   x = face.shader.u3 + face.shader.getTexturePageX() * mulX - textureHeader.offsetX;
   y = face.shader.v3 + face.shader.getTexturePageY() - textureHeader.offsetY + offY;
-  x += (numberOfLowerValues(face.shader.u3, face.shader.u2, face.shader.u1, face.shader.u4)) >= 2;
-  y += (numberOfLowerValues(face.shader.v3, face.shader.v2, face.shader.v1, face.shader.v4)) >= 2;
-  face.vc[2].u = (float)x / (float)outputTextureWidth;
-  face.vc[2].v = (float)y / (float)outputTextureHeight;
+  face.vc[2].u = (float)x / (float)outputTextureWidth + halfPixelW;
+  face.vc[2].v = (float)y / (float)outputTextureHeight + halfPixelH;
   if (face.vc.size() > 3) {
     x = face.shader.u4 + face.shader.getTexturePageX() * mulX - textureHeader.offsetX;
     y = face.shader.v4 + face.shader.getTexturePageY() - textureHeader.offsetY + offY;
-    x += (numberOfLowerValues(face.shader.u4, face.shader.u2, face.shader.u3, face.shader.u1)) >= 2;
-    y += (numberOfLowerValues(face.shader.v4, face.shader.v2, face.shader.v3, face.shader.v1)) >= 2;
-    face.vc[3].u = (float)x / (float)outputTextureWidth;
-    face.vc[3].v = (float)y / (float)outputTextureHeight;
+    face.vc[3].u = (float)x / (float)outputTextureWidth + halfPixelW;
+    face.vc[3].v = (float)y / (float)outputTextureHeight + halfPixelH;
   }
 }
 
