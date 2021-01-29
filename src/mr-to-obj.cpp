@@ -117,11 +117,11 @@ RGBA getColor(uint16_t color, SEMI_TRANSPARENCY_MODE mode, bool isFaceTransparen
       case TRANSPARENCY_MODE_ALPHA:
         return { r, g, b, 127 };
       case TRANSPARENCY_MODE_FULL:
-        return { r, g, b, highest(r,g,b) };
+        return { r, g, b, (uint8_t)min(highest(r,g,b) * highest(r,g,b) / 256 * 4, 255) };
       case TRANSPARENCY_MODE_FULL_INVERTED:
         return { r, g, b, (uint8_t)(255 - highest(r,g,b)) };
       case TRANSPARENCY_MODE_QUARTER:
-        return { r, g, b, (uint8_t)(highest(r,g,b) >> 2) };
+        return { r, g, b, (uint8_t)(highest(r,g,b) * highest(r,g,b) / 256) };
     }
   }
   return { 255, 0, 255, 255 };
