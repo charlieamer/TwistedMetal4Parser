@@ -126,6 +126,10 @@ Node *LoadFromFile(const char *path)
 {
   ifstream infile(path, ios::binary);
 
+  if (infile.bad()) {
+    throw runtime_error("Unable to open file");
+  }
+
   infile.seekg(0, std::ios::end);
   size_t length = (size_t)infile.tellg();
   infile.seekg(0, std::ios::beg);

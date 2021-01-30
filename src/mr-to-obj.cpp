@@ -250,30 +250,13 @@ void convertTexture(vector<FaceWithExtraInfo>& facesExtra, const MapTexture& tex
   lodepng::encode(mapFileName + ".png", (unsigned char*)(void*)outputAtlas.data(), width, height);
 }
 
-int main(int argc, const char *argv[]) {
-  if (argc < 2)
-  {
-    cout << "Usage: " << argv[0] << " file.mr\n";
-    return 1;
-  }
-  Node *root = LoadFromFile(argv[1]);
-  
-  Node *texturesRoot = LoadFromFile(replaceFileExtension(argv[1], "IMG").c_str());
-  MapTexture texture = getMapTexture(texturesRoot);
-  MapTexture clut = getMapClut(texturesRoot);
-  cout << "Map texture: " << texture.header.halfWidth * 2 << " x " << texture.header.height << endl;
-
-  vector<Pos3D> vertices = getListOfVerticesForMap(root);
-  cout << vertices.size() << " vertices\n";
-  vector<MapFaceInfo> faces = getListOfFacesForMap(root);
-  cout << faces.size() << " faces\n";
-  vector<SquareInfo> squares = getListOfSquaresForMap(root);
-  cout << squares.size() << " squares\n";
-  vector<ShaderInfo> shaders = getListOfShaderInfoForMap(root);
-  cout << shaders.size() << " shader infos\n";
-
-  vector<FaceWithExtraInfo> facesExtra;
-
+vector<FaceWithExtraInfo> buildFacesExtra(
+  const vector<SquareInfo>& squares,
+  const vector<MapFaceInfo>& faces,
+  const vector<Pos3D>& vertices,
+  const vector<ShaderInfo>& shaders
+) {
+  vector<FaceWithExtraInfo> ret;
   for (const SquareInfo& square : squares) {
     const SquareDrawInfo& drawInfo = square.highLOD;
     int startingFaceIndex = getIndexOfFaceByOffset(faces, drawInfo.faceDataOffset);
@@ -292,28 +275,26 @@ int main(int argc, const char *argv[]) {
         VertexWithColorAndUV vc { pos, hasColor ? face.colors[j] : Color(), hasColor };
         faceExtra.vc.push_back(vc);
       }
-      facesExtra.push_back(faceExtra);
+      ret.push_back(faceExtra);
     }
   }
+  return ret;
+}
 
-  string mapFileName = getFileName(argv[1]);
-  convertTexture(facesExtra, texture, clut, mapFileName);
-
-  ofstream out(replaceFileExtension(argv[1], "obj"), ios::binary);
-  out << "mtllib " << mapFileName << ".mtl\n";
-  ofstream outMtl(replaceFileExtension(argv[1], "mtl"), ios::binary);
-
-  // extract vertices
-  vector<VertexWithColorAndUV> allVertices;
+vector<VertexWithColorAndUV> extractVertices(const vector<FaceWithExtraInfo>& facesExtra) {
+  vector<VertexWithColorAndUV> ret;
   for (const auto& face : facesExtra) {
     for (const auto& vertex : face.vc) {
-      if (find(allVertices.begin(), allVertices.end(), vertex) == allVertices.end()) {
-        allVertices.push_back(vertex);
+      if (find(ret.begin(), ret.end(), vertex) == ret.end()) {
+        ret.push_back(vertex);
       }
     }
   }
-  // output vertices
-  for (const auto& vertex : allVertices) {
+  return ret;
+}
+
+ostream& operator<<(ostream& out, const vector<VertexWithColorAndUV>& vertices) {
+  for (const auto& vertex : vertices) {
     out << "v " << -vertex.pos.x / 1000.0f << " " << -vertex.pos.y / 1000.0f << " " << vertex.pos.z / 1000.0f;
     if (vertex.hasColor) {
       out << " " << vertex.col.red() << " " << vertex.col.green() << " " << vertex.col.blue();
@@ -322,16 +303,20 @@ int main(int argc, const char *argv[]) {
     }
     out << endl;
   }
+  return out;
+}
 
+void outputMaterial(string mrFilePath) {
+  ofstream outMtl(replaceFileExtension(mrFilePath, "mtl"), ios::binary);
   outMtl  << "newmtl atlas\n"
           << "   Ka 1.000 1.000 1.000\n"
           << "   Kd 1.000 1.000 1.000\n"
           << "   Ks 0.000 0.000 0.000\n"
-          << "   map_Kd " << mapFileName << ".png\n"
+          << "   map_Kd " << getFileName(mrFilePath) << ".png\n"
           << "\n";
-  out << "usemtl atlas\n";
+}
 
-  // output UVs
+void outputUVs(ostream& out, const vector<FaceWithExtraInfo> facesExtra) {
   for (const auto& face : facesExtra) {
     UvRect uv(face.shader, face.vc.size());
     if (face.face.vertexIndicesInMapSquare.size() == 3) {
@@ -346,7 +331,9 @@ int main(int argc, const char *argv[]) {
       out << "vt " << face.vc[1].u << " " << 1.0 - face.vc[1].v << endl;
     }
   }
-  // output faces
+}
+
+void outputFaces(ostream& out, const vector<FaceWithExtraInfo> facesExtra, const vector<VertexWithColorAndUV> allVertices) {
   int uvCount = 0;
   for (const auto& face : facesExtra) {
     UvRect uv(face.shader, face.vc.size());
@@ -371,4 +358,60 @@ int main(int argc, const char *argv[]) {
       uvCount += 4;
     }
   }
+}
+
+void tryConvertMapFile(string mrPath) {
+  Node *root = LoadFromFile(mrPath.c_str());
+  
+  Node *texturesRoot = LoadFromFile(replaceFileExtension(mrPath, "IMG").c_str());
+  MapTexture texture = getMapTexture(texturesRoot);
+  MapTexture clut = getMapClut(texturesRoot);
+  cout << "Map texture: " << texture.header.halfWidth * 2 << " x " << texture.header.height << endl;
+
+  vector<Pos3D> vertices = getListOfVerticesForMap(root);
+  cout << vertices.size() << " vertices\n";
+  vector<MapFaceInfo> faces = getListOfFacesForMap(root);
+  cout << faces.size() << " faces\n";
+  vector<SquareInfo> squares = getListOfSquaresForMap(root);
+  cout << squares.size() << " squares\n";
+  vector<ShaderInfo> shaders = getListOfShaderInfoForMap(root);
+  cout << shaders.size() << " shader infos\n";
+
+  vector<FaceWithExtraInfo> facesExtra = buildFacesExtra(squares, faces, vertices ,shaders);
+
+  string mapFileName = getFileName(mrPath);
+  convertTexture(facesExtra, texture, clut, mapFileName);
+
+  outputMaterial(mrPath);
+
+  ofstream out(replaceFileExtension(mrPath, "obj"), ios::binary);
+  out << "mtllib " << mapFileName << ".mtl\n";
+
+  // extract vertices
+  vector<VertexWithColorAndUV> allVertices = extractVertices(facesExtra);
+  // output vertices
+  out << allVertices;
+
+  out << "usemtl atlas\n";
+
+  outputUVs(out, facesExtra);
+  outputFaces(out, facesExtra, allVertices);
+}
+
+int main(int argc, const char *argv[]) {
+  if (argc < 2)
+  {
+    cout << "Usage: " << argv[0] << " file.mr\n";
+    return 1;
+  }
+
+  try {
+    cout << "Trying to open as map.\n";
+    tryConvertMapFile(argv[1]);
+    cout << "Successfuly converted file as map.\n";
+    return 0;
+  } catch(const exception &ex) {
+    cerr << "Error opening the file as map: " << ex.what() << endl;
+  }
+  return 1;
 }
