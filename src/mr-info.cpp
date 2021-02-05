@@ -15,22 +15,9 @@
 #endif
 using namespace std;
 
-bool exists(const char *fname)
-{
-    FILE *file;
-    if ((file = fopen(fname, "r")))
-    {
-        fclose(file);
-        return true;
-    }
-    return false;
-}
-
 void Extract(const Node* node) {
     // mkdir name
-    if (!exists(node->name.c_str())) {
-        mkd(node->name.c_str());
-    }
+    mkd(node->name.c_str());
     // cd name
     cd(node->name.c_str());
     // attributes
@@ -54,18 +41,8 @@ int main(int argc, const char *argv[])
     }
     Node *root = LoadFromFile(argv[1]);
     root->printRecursively();
-    for (int i=2; i<argc; i++) {
-        if (strcmp(argv[i], "--extract") == 0) {
-            Extract(root);
-        }
-    }
-    // Node* os = root->getChildByPath("os");
-    // ofstream functionNames("names.txt");
-    // functionNames << "{";
-    // if (os != nullptr) {
-    //     for (const Component& attribute : os->components) {
-    //         functionNames << "'" << attribute.name << "': " << attribute.getDataAs<uint32_t>() << ",";
-    //     }
-    // }
-    // functionNames << "}";
+    
+    mkd(getFileName(argv[1]).c_str());
+    cd(getFileName(argv[1]).c_str());
+    Extract(root);
 }
