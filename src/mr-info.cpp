@@ -42,7 +42,8 @@ int main(int argc, const char *argv[])
     Node *root = LoadFromFile(argv[1]);
     root->printRecursively();
     
-    mkd(getFileName(argv[1]).c_str());
-    cd(getFileName(argv[1]).c_str());
+    string folderName = replaceFileExtension(argv[1], "extracted");
+    mkd(folderName.c_str());
+    cd(folderName.c_str());
     Extract(root);
 }
