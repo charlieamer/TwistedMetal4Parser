@@ -136,6 +136,9 @@ Node *LoadFromFile(const char *path)
 
   vector<byte_t> buffer;
   buffer.insert(buffer.begin(), istreambuf_iterator<char>(infile), istreambuf_iterator<char>());
+  if (buffer.size() == 0) {
+    throw runtime_error("Empty file");
+  }
   if (buffer[0] != 0x67 || buffer[1] != 0x00 || buffer[2] != 0xCC || buffer[3] != 0xCC)
   {
     //throw runtime_error("File magic header doesn't match");

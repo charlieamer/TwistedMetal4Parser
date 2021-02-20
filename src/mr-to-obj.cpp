@@ -19,14 +19,24 @@ bool exists(const char *fname)
     return false;
 }
 
-struct VertexWithColorAndUV {
+struct VertexWithUV {
   Pos3D pos;
+  float u, v;
+};
+
+struct VertexWithColorAndUV : VertexWithUV {
   Color col;
   bool hasColor;
   bool operator==(const VertexWithColorAndUV& other) const {
     return other.col == col && other.pos == pos && other.hasColor == hasColor;
   }
-  float u, v;
+};
+
+struct VertexWithNormalAndUV : VertexWithUV {
+  Pos3D normal;
+  bool operator==(const VertexWithNormalAndUV& other) const {
+    return other.pos == pos && other.normal == normal;
+  }
 };
 
 struct UvRect {
@@ -80,13 +90,20 @@ struct UvRect {
   }
 };
 
+template<typename FaceType, typename VertexType>
 struct FaceWithExtraInfo {
-  MapFaceInfo face;
+  FaceType face;
   ShaderInfo shader;
-  vector<VertexWithColorAndUV> vc;
+  vector<VertexType> vc;
 };
 
-string textureNameFromShader(const FaceWithExtraInfo& face) {
+#define GENERIC_FACE FaceWithExtraInfo<typename FaceType, typename VertexType>
+
+struct CarFaceWithExtraInfo : FaceWithExtraInfo<CarFace, VertexWithNormalAndUV> {};
+
+struct MapFaceWithExtraInfo : FaceWithExtraInfo<MapFaceInfo, VertexWithColorAndUV> {};
+
+string textureNameFromShader(const MapFaceWithExtraInfo& face) {
   UvRect uv(face.shader, face.vc.size());
   char tmp[256];
   snprintf(tmp, 256, "%dx%d_%dx%d_%x_%x",
@@ -161,7 +178,8 @@ int numberOfLowerValues(int cmp, int a, int b, int c) {
   return ret;
 }
 
-void setFaceUVs(FaceWithExtraInfo& face, const MapTextureHeader& textureHeader, int outputTextureWidth, int outputTextureHeight) {
+template<typename T>
+void setFaceUVs(T& face, const MapTextureHeader& textureHeader, int outputTextureWidth, int outputTextureHeight) {
   CLUT_MODE clutMode = face.shader.getClutMode();
   int mulX = (clutMode == CLUT_4_BIT) ? 4 : 2;
   int offY = (clutMode == CLUT_4_BIT) ? 0 : textureHeader.height;
@@ -169,28 +187,29 @@ void setFaceUVs(FaceWithExtraInfo& face, const MapTextureHeader& textureHeader, 
   int y;
   float halfPixelW = 1.0f / (float)outputTextureWidth / 2.0f;
   float halfPixelH = 1.0f / (float)outputTextureHeight / 2.0f;
-  x = face.shader.u1 + face.shader.getTexturePageX() * mulX - textureHeader.offsetX;
-  y = face.shader.v1 + face.shader.getTexturePageY() - textureHeader.offsetY + offY;
+  x = face.shader.u1 + (face.shader.getTexturePageX() - textureHeader.offsetX) * mulX;
+  y = face.shader.v1 + (face.shader.getTexturePageY() - textureHeader.offsetY) + offY;
   face.vc[0].u = (float)x / (float)outputTextureWidth + halfPixelW;
   face.vc[0].v = (float)y / (float)outputTextureHeight + halfPixelH;
 
-  x = face.shader.u2 + face.shader.getTexturePageX() * mulX - textureHeader.offsetX;
-  y = face.shader.v2 + face.shader.getTexturePageY() - textureHeader.offsetY + offY;
+  x = face.shader.u2 + (face.shader.getTexturePageX() - textureHeader.offsetX) * mulX;
+  y = face.shader.v2 + (face.shader.getTexturePageY() - textureHeader.offsetY) + offY;
   face.vc[1].u = (float)x / (float)outputTextureWidth + halfPixelW;
   face.vc[1].v = (float)y / (float)outputTextureHeight + halfPixelH;
-  x = face.shader.u3 + face.shader.getTexturePageX() * mulX - textureHeader.offsetX;
-  y = face.shader.v3 + face.shader.getTexturePageY() - textureHeader.offsetY + offY;
+  x = face.shader.u3 + (face.shader.getTexturePageX() - textureHeader.offsetX) * mulX;
+  y = face.shader.v3 + (face.shader.getTexturePageY() - textureHeader.offsetY) + offY;
   face.vc[2].u = (float)x / (float)outputTextureWidth + halfPixelW;
   face.vc[2].v = (float)y / (float)outputTextureHeight + halfPixelH;
   if (face.vc.size() > 3) {
-    x = face.shader.u4 + face.shader.getTexturePageX() * mulX - textureHeader.offsetX;
-    y = face.shader.v4 + face.shader.getTexturePageY() - textureHeader.offsetY + offY;
+    x = face.shader.u4 + (face.shader.getTexturePageX() - textureHeader.offsetX) * mulX;
+    y = face.shader.v4 + (face.shader.getTexturePageY() - textureHeader.offsetY) + offY;
     face.vc[3].u = (float)x / (float)outputTextureWidth + halfPixelW;
     face.vc[3].v = (float)y / (float)outputTextureHeight + halfPixelH;
   }
 }
 
-void fillTextureFace(const FaceWithExtraInfo& face, const MapTexture& texture, const MapTexture& clut, vector<vector<RGBA>>& output) {
+template<typename T>
+void fillTextureFace(const T& face, const MapTexture& texture, const MapTexture& clut, vector<vector<RGBA>>& output) {
   CLUT_MODE clutMode = face.shader.getClutMode();
   if (clutMode == CLUT_DIRECT) {
     cerr << "Unsupported CLUT mode" << endl;
@@ -215,11 +234,11 @@ void fillTextureFace(const FaceWithExtraInfo& face, const MapTexture& texture, c
           texture, u, v, uv.minu, uv.minv,
           face.shader.getTexturePageX(), face.shader.getTexturePageY(), clutMode
         );
-        RGBA color = getColor(lut[index], face.shader.getTransparencyMode(), face.face.isTransparent);
+        RGBA color = getColor(lut[index], face.shader.getTransparencyMode(), face.face.isTransparent());
         int mulX = (clutMode == CLUT_4_BIT) ? 4 : 2;
         int offY = (clutMode == CLUT_4_BIT) ? 0 : texture.header.height;
-        int x = u + face.shader.getTexturePageX() * mulX + uv.minu - texture.header.offsetX;
-        int y = v + face.shader.getTexturePageY() + uv.minv - texture.header.offsetY + offY;
+        int x = u + (face.shader.getTexturePageX() - texture.header.offsetX) * mulX + uv.minu;
+        int y = v + (face.shader.getTexturePageY() - texture.header.offsetY) + offY + uv.minv;
         output[x][y] = color;
       } catch(invalid_coordinates_error) {
         cerr << "Invalid texture coordinates\n";
@@ -229,7 +248,8 @@ void fillTextureFace(const FaceWithExtraInfo& face, const MapTexture& texture, c
   }
 }
 
-void convertTexture(vector<FaceWithExtraInfo>& facesExtra, const MapTexture& texture, const MapTexture& clut, string mapFileName) {
+template<typename T>
+void convertTexture(vector<T>& facesExtra, const MapTexture& texture, const MapTexture& clut, string mapFileName) {
   int width = texture.header.halfWidth * 4;
   int height = texture.header.height * 2;
   vector<vector<RGBA>> atlas(width);
@@ -250,13 +270,13 @@ void convertTexture(vector<FaceWithExtraInfo>& facesExtra, const MapTexture& tex
   lodepng::encode(mapFileName + ".png", (unsigned char*)(void*)outputAtlas.data(), width, height);
 }
 
-vector<FaceWithExtraInfo> buildFacesExtra(
+vector<MapFaceWithExtraInfo> buildFacesExtra(
   const vector<SquareInfo>& squares,
   const vector<MapFaceInfo>& faces,
   const vector<Pos3D>& vertices,
   const vector<ShaderInfo>& shaders
 ) {
-  vector<FaceWithExtraInfo> ret;
+  vector<MapFaceWithExtraInfo> ret;
   for (const SquareInfo& square : squares) {
     const SquareDrawInfo& drawInfo = square.highLOD;
     int startingFaceIndex = getIndexOfFaceByOffset(faces, drawInfo.faceDataOffset);
@@ -268,11 +288,16 @@ vector<FaceWithExtraInfo> buildFacesExtra(
     uint16_t startingVertexIndex = drawInfo.vertexStartIndex;
     for (int i=0; i<drawInfo.numFaces; i++) {
       const MapFaceInfo& face = faces[i + startingFaceIndex];
-      FaceWithExtraInfo faceExtra { face, shaders[face.shaderOffset / sizeof(ShaderInfo)] };
+      MapFaceWithExtraInfo faceExtra;
+      faceExtra.face = face;
+      faceExtra.shader = shaders[face.shaderOffset / sizeof(ShaderInfo)];
       for (size_t j=0; j<face.vertexIndicesInMapSquare.size(); j++) {
         Pos3D pos = vertices[VERT_OFFSET(face.vertexIndicesInMapSquare[j])];
         bool hasColor = j < face.colors.size();
-        VertexWithColorAndUV vc { pos, hasColor ? face.colors[j] : Color(), hasColor };
+        VertexWithColorAndUV vc;
+        vc.pos = pos;
+        vc.col = hasColor ? face.colors[j] : Color();
+        vc.hasColor = hasColor;
         faceExtra.vc.push_back(vc);
       }
       ret.push_back(faceExtra);
@@ -281,8 +306,9 @@ vector<FaceWithExtraInfo> buildFacesExtra(
   return ret;
 }
 
-vector<VertexWithColorAndUV> extractVertices(const vector<FaceWithExtraInfo>& facesExtra) {
-  vector<VertexWithColorAndUV> ret;
+template<typename InType, typename OutType>
+vector<OutType> extractVertices(const vector<InType>& facesExtra) {
+  vector<OutType> ret;
   for (const auto& face : facesExtra) {
     for (const auto& vertex : face.vc) {
       if (find(ret.begin(), ret.end(), vertex) == ret.end()) {
@@ -306,6 +332,14 @@ ostream& operator<<(ostream& out, const vector<VertexWithColorAndUV>& vertices) 
   return out;
 }
 
+ostream& operator<<(ostream& out, const vector<VertexWithNormalAndUV>& vertices) {
+  for (const auto& vertex : vertices) {
+    out << "v " << -vertex.pos.x / 10.0f << " " << -vertex.pos.y / 10.0f << " " << vertex.pos.z / 10.0f;
+    out << endl;
+  }
+  return out;
+}
+
 void outputMaterial(string mrFilePath) {
   ofstream outMtl(replaceFileExtension(mrFilePath, "mtl"), ios::binary);
   outMtl  << "newmtl atlas\n"
@@ -316,15 +350,16 @@ void outputMaterial(string mrFilePath) {
           << "\n";
 }
 
-void outputUVs(ostream& out, const vector<FaceWithExtraInfo> facesExtra) {
+template<typename T>
+void outputUVs(ostream& out, const vector<T> facesExtra) {
   for (const auto& face : facesExtra) {
     UvRect uv(face.shader, face.vc.size());
-    if (face.face.vertexIndicesInMapSquare.size() == 3) {
+    if (face.vc.size() == 3) {
       out << "vt " << face.vc[2].u << " " << 1.0 - face.vc[2].v << endl;
       out << "vt " << face.vc[1].u << " " << 1.0 - face.vc[1].v << endl;
       out << "vt " << face.vc[0].u << " " << 1.0 - face.vc[0].v << endl;
     }
-    if (face.face.vertexIndicesInMapSquare.size() == 4) {
+    if (face.vc.size() == 4) {
       out << "vt " << face.vc[0].u << " " << 1.0 - face.vc[0].v << endl;
       out << "vt " << face.vc[2].u << " " << 1.0 - face.vc[2].v << endl;
       out << "vt " << face.vc[3].u << " " << 1.0 - face.vc[3].v << endl;
@@ -333,13 +368,30 @@ void outputUVs(ostream& out, const vector<FaceWithExtraInfo> facesExtra) {
   }
 }
 
-void outputFaces(ostream& out, const vector<FaceWithExtraInfo> facesExtra, const vector<VertexWithColorAndUV> allVertices) {
+void outputNormals(ostream& out, const vector<CarFaceWithExtraInfo> facesExtra) {
+  for (const auto& face : facesExtra) {
+    UvRect uv(face.shader, face.vc.size());
+    if (face.vc.size() == 3) {
+      out << "vn " << -face.vc[2].normal.x << " " << -face.vc[2].normal.y << " " << face.vc[2].normal.z << endl;
+      out << "vn " << -face.vc[1].normal.x << " " << -face.vc[1].normal.y << " " << face.vc[1].normal.z << endl;
+      out << "vn " << -face.vc[0].normal.x << " " << -face.vc[0].normal.y << " " << face.vc[0].normal.z << endl;
+    }
+    if (face.vc.size() == 4) {
+      out << "vn " << -face.vc[0].normal.x << " " << -face.vc[0].normal.y << " " << face.vc[0].normal.z << endl;
+      out << "vn " << -face.vc[2].normal.x << " " << -face.vc[2].normal.y << " " << face.vc[2].normal.z << endl;
+      out << "vn " << -face.vc[3].normal.x << " " << -face.vc[3].normal.y << " " << face.vc[3].normal.z << endl;
+      out << "vn " << -face.vc[1].normal.x << " " << -face.vc[1].normal.y << " " << face.vc[1].normal.z << endl;
+    }
+  }
+}
+
+void outputFaces(ostream& out, const vector<MapFaceWithExtraInfo> facesExtra, const vector<VertexWithColorAndUV> allVertices) {
   int uvCount = 0;
   for (const auto& face : facesExtra) {
     UvRect uv(face.shader, face.vc.size());
     if (face.face.vertexIndicesInMapSquare.size() == 3) {
       out << "f " << (find(allVertices.begin(), allVertices.end(), face.vc[2]) - allVertices.begin()) + 1 << "/"
-                    << uvCount + 1<< " "
+                    << uvCount + 1 << " "
                   << (find(allVertices.begin(), allVertices.end(), face.vc[1]) - allVertices.begin()) + 1 << "/"
                     << uvCount + 2 << " "
                   << (find(allVertices.begin(), allVertices.end(), face.vc[0]) - allVertices.begin()) + 1 << "/"
@@ -360,12 +412,44 @@ void outputFaces(ostream& out, const vector<FaceWithExtraInfo> facesExtra, const
   }
 }
 
+void outputFaces(ostream& out, const vector<CarFaceWithExtraInfo> facesExtra, const vector<VertexWithNormalAndUV> allVertices, int faceOffset, int numFaces) {
+  int uvCount = 0;
+  for (int i=0; i<faceOffset; i++) {
+    uvCount += facesExtra[i].vc.size();
+  }
+  for (int i=faceOffset; i < faceOffset + numFaces; i++) {
+    const auto& face = facesExtra[i];
+    UvRect uv(face.shader, face.vc.size());
+    if (face.vc.size() == 3) {
+      out << "f " << (find(allVertices.begin(), allVertices.end(), face.vc[2]) - allVertices.begin()) + 1 << "/"
+                    << uvCount + 1 << "/" << uvCount + 1 << " "
+                  << (find(allVertices.begin(), allVertices.end(), face.vc[1]) - allVertices.begin()) + 1 << "/"
+                    << uvCount + 2 << "/" << uvCount + 2 << " "
+                  << (find(allVertices.begin(), allVertices.end(), face.vc[0]) - allVertices.begin()) + 1 << "/"
+                    << uvCount + 3 << "/" << uvCount + 3 << "\n";
+      uvCount += 3;
+    }
+    if (face.vc.size() == 4) {
+      out << "f " << (find(allVertices.begin(), allVertices.end(), face.vc[0]) - allVertices.begin()) + 1 << "/"
+                    << uvCount + 1 << "/" << uvCount + 1 << " "
+                  << (find(allVertices.begin(), allVertices.end(), face.vc[2]) - allVertices.begin()) + 1 << "/"
+                    << uvCount + 2 << "/" << uvCount + 2 << " "
+                  << (find(allVertices.begin(), allVertices.end(), face.vc[3]) - allVertices.begin()) + 1 << "/"
+                    << uvCount + 3 << "/" << uvCount + 3 << " "
+                  << (find(allVertices.begin(), allVertices.end(), face.vc[1]) - allVertices.begin()) + 1 << "/"
+                    << uvCount + 4 << "/" << uvCount + 4 << "\n";
+      uvCount += 4;
+    }
+  }
+}
+
 void tryConvertMapFile(string mrPath) {
   Node *root = LoadFromFile(mrPath.c_str());
   
   Node *texturesRoot = LoadFromFile(replaceFileExtension(mrPath, "IMG").c_str());
   MapTexture texture = getMapTexture(texturesRoot);
   MapTexture clut = getMapClut(texturesRoot);
+  throw runtime_error("Nope");
   cout << "Map texture: " << texture.header.halfWidth * 2 << " x " << texture.header.height << endl;
 
   vector<Pos3D> vertices = getListOfVerticesForMap(root);
@@ -377,7 +461,7 @@ void tryConvertMapFile(string mrPath) {
   vector<ShaderInfo> shaders = getListOfShaderInfoForMap(root);
   cout << shaders.size() << " shader infos\n";
 
-  vector<FaceWithExtraInfo> facesExtra = buildFacesExtra(squares, faces, vertices ,shaders);
+  vector<MapFaceWithExtraInfo> facesExtra = buildFacesExtra(squares, faces, vertices, shaders);
 
   string mapFileName = getFileName(mrPath);
   convertTexture(facesExtra, texture, clut, mapFileName);
@@ -388,7 +472,7 @@ void tryConvertMapFile(string mrPath) {
   out << "mtllib " << mapFileName << ".mtl\n";
 
   // extract vertices
-  vector<VertexWithColorAndUV> allVertices = extractVertices(facesExtra);
+  vector<VertexWithColorAndUV> allVertices = extractVertices<MapFaceWithExtraInfo, VertexWithColorAndUV>(facesExtra);
   // output vertices
   out << allVertices;
 
@@ -396,6 +480,96 @@ void tryConvertMapFile(string mrPath) {
 
   outputUVs(out, facesExtra);
   outputFaces(out, facesExtra, allVertices);
+}
+
+bool shouldGroupBeTranslated(string groupName) {
+  vector<string> translatedStarts {"rr_wheel", "rl_wheel", "fr_wheel", "fl_wheel"};
+  for (string start : translatedStarts) {
+    if (groupName.rfind(start, 0) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+map<string, vector<CarFaceWithExtraInfo>> buildCarFacesExtra(
+  const vector<Pos3D>& vertices,
+  const vector<CarFace>& faces,
+  const vector<VertexNormal>& normals,
+  Node* root,
+  bool extractHighHP
+) {
+  map<string, vector<CarFaceWithExtraInfo>> ret;
+  for (const auto& groupComponent : root->getChildByPath("display/resolution/r0/Groups")->components) {
+    CarVertexGroup group = groupComponent.getDataAs<CarVertexGroup>();
+    CarVertexGroupInfo groupInfo = extractHighHP ? group.HighHPInfo : group.LowHPInfo;
+    vector<CarFaceWithExtraInfo> vec;
+    for (int i=0; i<groupInfo.faceCount; i++) {
+      CarFaceWithExtraInfo face;
+      face.face = faces[groupInfo.startFaceIndex + i];
+      face.shader = face.face.shader;
+      for (int j=0; j<face.face.getNumVertices(); j++) {
+        VertexWithNormalAndUV v;
+        v.pos = vertices[face.face.vertexOffsets[j] + groupInfo.startVertexIndex];
+        int offsetMul = shouldGroupBeTranslated(groupComponent.name);
+        v.pos.x += group.offset3D.x * offsetMul;
+        v.pos.y += group.offset3D.y * offsetMul;
+        v.pos.z += group.offset3D.z * offsetMul;
+        const VertexNormal& normal = normals[face.face.normalOffsets[j] + groupInfo.vertexNormalIndex];
+        v.normal.x = normal.x;
+        v.normal.y = normal.y;
+        v.normal.z = normal.z;
+        face.vc.push_back(v);
+      }
+      vec.push_back(face);
+    }
+    ret[groupComponent.name] = vec;
+  }
+  return ret;
+}
+
+void tryConvertCarFile(string mrPath, bool extractHighHP) {
+  Node *root = LoadFromFile(mrPath.c_str());
+
+  if (!extractHighHP) {
+    mrPath = removeFileExtension(mrPath) + "-lowHP.MR";
+  }
+
+  vector<Pos3D> vertices = getListOfVerticesForCar(root);
+  vector<CarFace> faces = getListOfFacesForCar(root);
+  vector<VertexNormal> normals = getCarVertexNormals(root);
+
+  cout << vertices.size() << " vertices\n";
+  cout << faces.size() << " faces\n";
+  
+  ofstream out(replaceFileExtension(mrPath, "obj"), ios::binary);
+  auto facesExtra = buildCarFacesExtra(vertices, faces, normals, root, extractHighHP);
+  vector<CarFaceWithExtraInfo> allFaces;
+  for (const auto& it : facesExtra) {
+    allFaces.insert(allFaces.end(), it.second.begin(), it.second.end());
+  }
+  MapTexture texture = getCarTexture(root);
+
+  string mapFileName = getFileName(mrPath);
+  convertTexture(allFaces, texture, texture, removeFileExtension(mrPath));
+  out << "mtllib " << mapFileName << ".mtl\n";
+  out << "usemtl atlas\n";
+
+  outputMaterial(mrPath);
+
+  // extract vertices
+  vector<VertexWithNormalAndUV> allExtractedVertices = extractVertices<CarFaceWithExtraInfo, VertexWithNormalAndUV>(allFaces);
+  // output vertices
+  out << allExtractedVertices;
+
+  outputNormals(out, allFaces);
+  outputUVs(out, allFaces);
+  int currentFaceIndex = 0;
+  for (const auto& it : facesExtra) {
+    out << "o " << it.first << endl;
+    outputFaces(out, allFaces, allExtractedVertices, currentFaceIndex, it.second.size());
+    currentFaceIndex += it.second.size();
+  }
 }
 
 int main(int argc, const char *argv[]) {
@@ -412,6 +586,17 @@ int main(int argc, const char *argv[]) {
     return 0;
   } catch(const exception &ex) {
     cerr << "Error opening the file as map: " << ex.what() << endl;
+    try {
+      cout << "Trying to open as car.\n";
+      cout << "High HP\n";
+      tryConvertCarFile(argv[1], true);
+      cout << "Low HP\n";
+      tryConvertCarFile(argv[1], false);
+      cout << "Successfuly converted file as car.\n";
+    } catch(const exception& ex) {
+      cerr << "Error opening file as car: " << ex.what() << endl;
+    } 
+    return 0;
   }
   return 1;
 }

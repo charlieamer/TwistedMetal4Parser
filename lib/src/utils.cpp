@@ -10,6 +10,15 @@ string replaceFileExtension(string fileName, string newExtension) {
   return fileName + "." + newExtension;
 }
 
+string removeFileExtension(string filename) {
+  const size_t period_idx = filename.rfind('.');
+  if (std::string::npos != period_idx)
+  {
+      filename.erase(period_idx);
+  }
+  return filename;
+}
+
 string getFileName(string filename) {
   // Remove directory if present.
   // Do this before extension removal incase directory has a period character.
@@ -50,14 +59,14 @@ vector<string> splitString(string target, string delim)
   return v;
 }
 
-vector<Pos3D> getListOfVerticesForMap(Node* root) {
-  Node* displayPolys = root->getChildByPath("world/displayPolys");
+vector<Pos3D> getListOfVertices(Node* root, string path, string attribute) {
+  Node* displayPolys = root->getChildByPath(path);
   if (displayPolys == nullptr) {
-    throw runtime_error("world/displayPolys not found. Maybe this is not a map file?");
+    throw runtime_error("Node path not found.");
   }
-  Component* vertexData = displayPolys->getAttributeByName("vertexData");
+  Component* vertexData = displayPolys->getAttributeByName(attribute);
   if (vertexData == nullptr) {
-    throw runtime_error("world/displayPolys doesn't contain vertexData component.");
+    throw runtime_error("Node path doesn't contain given attribute component.");
   }
   vector<Pos3D> ret;
   ret.resize(vertexData->data.size() / sizeof(Pos3D));
@@ -65,6 +74,13 @@ vector<Pos3D> getListOfVerticesForMap(Node* root) {
   return ret;
 }
 
+vector<Pos3D> getListOfVerticesForMap(Node* root) {
+  return getListOfVertices(root, "world/displayPolys", "vertexData");
+}
+
+vector<Pos3D> getListOfVerticesForCar(Node* root) {
+  return getListOfVertices(root, "display/resolution", "VertexList");
+}
 
 #define TEXTURED_TRIANGLE__OPAQUE 0x24
 #define TEXTURED_TRIANGLE__SEMI_TRANSPARENT 0x26
@@ -75,15 +91,48 @@ vector<Pos3D> getListOfVerticesForMap(Node* root) {
 #define SHADED_TEXTURED_QUAD__OPAQUE 0x3c
 #define SHADED_TEXTURED_QUAD__SEMI_TRANSPARENT 0x3e
 
-vector<MapFaceInfo> getListOfFacesForMap(Node* root) {
+int numPolyVertices(byte_t specialByte) {
+    return (specialByte == TEXTURED_TRIANGLE__OPAQUE ||
+            specialByte == SHADED_TEXTURED_TRIANGLE__OPAQUE ||
+            specialByte == SHADED_TEXTURED_TRIANGLE__SEMI_TRANSPARENT ||
+            specialByte == TEXTURED_TRIANGLE__SEMI_TRANSPARENT) ? 3 : 4;
+}
+
+bool isPolyShaded(byte_t specialByte) {
+  return (specialByte == SHADED_TEXTURED_TRIANGLE__OPAQUE ||
+          specialByte == SHADED_TEXTURED_QUAD__OPAQUE ||
+          specialByte == SHADED_TEXTURED_QUAD__SEMI_TRANSPARENT ||
+          specialByte == SHADED_TEXTURED_TRIANGLE__SEMI_TRANSPARENT);
+}
+
+bool isPolyTransparent(byte_t specialByte) {
+    return (specialByte == SHADED_TEXTURED_QUAD__SEMI_TRANSPARENT ||
+            specialByte == TEXTURED_QUAD__SEMI_TRANSPARENT ||
+            specialByte == SHADED_TEXTURED_TRIANGLE__SEMI_TRANSPARENT ||
+            specialByte == TEXTURED_TRIANGLE__SEMI_TRANSPARENT);
+}
+
+bool MapFaceInfo::isShaded() const {
+  return isPolyShaded(specialByte);
+}
+
+bool MapFaceInfo::isTransparent() const {
+  return isPolyTransparent(specialByte);
+}
+
+bool CarFace::isTransparent() const {
+  return isPolyTransparent(faceSpecialByte);
+}
+
+vector<MapFaceInfo> getListOfFaces(Node* root, string path, string attribute) {
   vector<MapFaceInfo> ret;
-  Node* displayPolys = root->getChildByPath("world/displayPolys");
+  Node* displayPolys = root->getChildByPath(path);
   if (displayPolys == nullptr) {
-    throw runtime_error("world/displayPolys not found. Maybe this is not a map file?");
+    throw runtime_error("Path to node not found.");
   }
-  Component* faceData = displayPolys->getAttributeByName("faceData");
+  Component* faceData = displayPolys->getAttributeByName(attribute);
   if (faceData == nullptr) {
-    throw runtime_error("world/displayPolys doesn't contain faceData component.");
+    throw runtime_error("Path to node doesn't contain face data component.");
   }
   for (byte_t* dataPtr = faceData->data.data(); dataPtr < faceData->data.data() + faceData->data.size();) {
     MapFaceInfo faceInfo;
@@ -100,24 +149,14 @@ vector<MapFaceInfo> getListOfFacesForMap(Node* root) {
       throw runtime_error("Unknown special byte in face");
     }
 
-    byte_t numVertices = (specialByte == TEXTURED_TRIANGLE__OPAQUE ||
-                          specialByte == SHADED_TEXTURED_TRIANGLE__OPAQUE ||
-                          specialByte == SHADED_TEXTURED_TRIANGLE__SEMI_TRANSPARENT ||
-                          specialByte == TEXTURED_TRIANGLE__SEMI_TRANSPARENT) ? 3 : 4;
-    faceInfo.isShaded = (specialByte == SHADED_TEXTURED_TRIANGLE__OPAQUE ||
-                         specialByte == SHADED_TEXTURED_QUAD__OPAQUE ||
-                         specialByte == SHADED_TEXTURED_QUAD__SEMI_TRANSPARENT ||
-                         specialByte == SHADED_TEXTURED_TRIANGLE__SEMI_TRANSPARENT);
-    faceInfo.isTransparent = (specialByte == SHADED_TEXTURED_QUAD__SEMI_TRANSPARENT ||
-                              specialByte == TEXTURED_QUAD__SEMI_TRANSPARENT ||
-                              specialByte == SHADED_TEXTURED_TRIANGLE__SEMI_TRANSPARENT ||
-                              specialByte == TEXTURED_TRIANGLE__SEMI_TRANSPARENT);
+    byte_t numVertices = numPolyVertices(specialByte);
+    faceInfo.specialByte = specialByte;
 
-    byte_t sizeInBuffer = faceInfo.isShaded ? 24 : 16;
+    byte_t sizeInBuffer = faceInfo.isShaded() ? 24 : 16;
     const static byte_t colorOffsets[] = {0, 8, 12, 16};
     for (byte_t i=0; i<numVertices; i++) {
       faceInfo.vertexIndicesInMapSquare.push_back(dataPtr[4 + i]);
-      if (faceInfo.isShaded) {
+      if (faceInfo.isShaded()) {
         Color color;
         memcpy(&color, dataPtr + colorOffsets[i], sizeof(Color));
         faceInfo.colors.push_back(color);
@@ -130,6 +169,30 @@ vector<MapFaceInfo> getListOfFacesForMap(Node* root) {
   }
   return ret;
 }
+
+vector<MapFaceInfo> getListOfFacesForMap(Node* root) {
+  return getListOfFaces(root, "world/displayPolys", "faceData");
+}
+
+vector<CarFace> getListOfFacesForCar(Node* root) {
+  Node* displayPolys = root->getChildByPath("display/resolution");
+  if (displayPolys == nullptr) {
+    throw runtime_error("Node path not found.");
+  }
+  Component* faceData = displayPolys->getAttributeByName("FaceList");
+  if (faceData == nullptr) {
+    throw runtime_error("Node path doesn't contain given attribute component.");
+  }
+  vector<CarFace> ret;
+  ret.resize(faceData->data.size() / sizeof(CarFace));
+  memcpy(ret.data(), faceData->data.data(), faceData->data.size());
+  return ret;
+}
+
+int CarFace::getNumVertices() const {
+  return numPolyVertices(faceSpecialByte);
+}
+
 int getIndexOfFaceByOffset(const vector<MapFaceInfo>& faces, uint32_t desiredOffsetInBuffer) {
   int ret = 0;
   for (const MapFaceInfo& face : faces) {
@@ -196,17 +259,20 @@ vector<ShaderInfo> getListOfShaderInfoForMap(Node* root) {
   return ret;
 }
 
-MapTexture genericGetMapTexture(Node* textureRoot, string attributeName) {
-  Node* world = textureRoot->getChildByPath("world");
+MapTexture genericGetMapTexture(Node* textureRoot, string childPath, string attributeName, int forceHeight = -1) {
+  Node* world = textureRoot->getChildByPath(childPath);
   if (world == nullptr) {
-    throw runtime_error("world in texture not found.");
+    throw runtime_error("node in texture not found.");
   }
   Component* texture = world->getAttributeByName(attributeName);
   if (texture == nullptr) {
-    throw runtime_error("world node in texture doesn't contain texture data");
+    throw runtime_error("node in texture doesn't contain texture data");
   }
   MapTexture ret;
   memcpy(&ret.header, texture->data.data(), sizeof(MapTextureHeader));
+  if (forceHeight != -1) {
+    ret.header.height = forceHeight;
+  }
   if (texture->data.size() - sizeof(MapTextureHeader) != ret.header.halfWidth * 2 * ret.header.height ) {
     throw runtime_error("invalide texture size");
   }
@@ -224,9 +290,17 @@ MapTexture genericGetMapTexture(Node* textureRoot, string attributeName) {
 }
 
 MapTexture getMapTexture(Node* textureRoot) {
-  return genericGetMapTexture(textureRoot, "world.bit");
+  return genericGetMapTexture(textureRoot, "world", "world.bit");
 }
 
 MapTexture getMapClut(Node* textureRoot) {
-  return genericGetMapTexture(textureRoot, "world.clt");
+  return genericGetMapTexture(textureRoot, "world", "world.clt");
+}
+
+MapTexture getCarTexture(Node* root) {
+  return genericGetMapTexture(root, "display", "car.bit");
+}
+
+vector<VertexNormal> getCarVertexNormals(Node* root) {
+  return root->getChildByPath("display/resolution")->getAttributeByName("VertexNormalList")->getDataAsVector<VertexNormal>();
 }

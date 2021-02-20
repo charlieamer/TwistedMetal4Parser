@@ -1,5 +1,7 @@
 #pragma once
 #include "namable.h"
+#include <vector>
+using namespace std;
 
 struct Component : public Namable
 {
@@ -19,6 +21,13 @@ struct Component : public Namable
     }
     T ret;
     memcpy(&ret, data.data(), sizeof(T));
+    return ret;
+  }
+  template<typename T>
+  vector<T> getDataAsVector() const {
+    vector<T> ret;
+    ret.resize(data.size() / sizeof(T));
+    memcpy(ret.data(), data.data(), data.size());
     return ret;
   }
 private:

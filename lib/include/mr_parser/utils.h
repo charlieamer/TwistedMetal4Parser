@@ -5,6 +5,7 @@ using namespace std;
 #include "types.h"
 #include "node.h"
 
+string removeFileExtension(string filename);
 string replaceFileExtension(string fileName, string newExtension);
 string getFileName(string fullPath);
 
@@ -43,6 +44,7 @@ struct Pos3D {
   }
 };
 vector<Pos3D> getListOfVerticesForMap(Node* root);
+vector<Pos3D> getListOfVerticesForCar(Node* root);
 
 struct Color {
   uint8_t r,g,b;
@@ -61,15 +63,15 @@ struct Color {
 };
 
 struct MapFaceInfo {
-  bool isTransparent;
-  bool isShaded;
+  bool isTransparent() const;
+  bool isShaded() const;
+  byte_t specialByte;
   vector<int> vertexIndicesInMapSquare;
   uint32_t shaderOffset;
   uint32_t offsetInBuffer;
   vector<Color> colors;
 };
 vector<MapFaceInfo> getListOfFacesForMap(Node* root);
-int getIndexOfFaceByOffset(const vector<MapFaceInfo>& faces, uint32_t desiredOffsetInBuffer);
 
 struct SquareDrawInfo {
   byte_t numVertices;
@@ -115,6 +117,18 @@ struct ShaderInfo {
 };
 vector<ShaderInfo> getListOfShaderInfoForMap(Node* root);
 
+struct CarFace {
+  byte_t faceSpecialByte;
+  byte_t unused0[3];
+  ShaderInfo shader;
+  byte_t vertexOffsets[4];
+  byte_t normalOffsets[4];
+  int getNumVertices() const;
+  bool isTransparent() const;
+};
+vector<CarFace> getListOfFacesForCar(Node* root);
+int getIndexOfFaceByOffset(const vector<MapFaceInfo>& faces, uint32_t desiredOffsetInBuffer);
+
 struct MapTextureHeader {
   uint16_t offsetX;
   uint16_t offsetY;
@@ -135,6 +149,27 @@ struct MapTexture {
 };
 
 MapTexture getMapTexture(Node* textureRoot);
-MapTexture getMapClut(Node* textureRoot);
-
 // http://www.psxdev.net/forum/viewtopic.php?t=953
+MapTexture getMapClut(Node* textureRoot);
+MapTexture getCarTexture(Node* root);
+
+struct CarVertexGroupInfo {
+  uint16_t startFaceIndex;
+  uint16_t faceCount;
+  uint16_t startVertexIndex;
+  uint16_t vertexCount;
+  uint16_t vertexNormalIndex;
+  uint16_t vertexNormalCount;
+};
+
+struct CarVertexGroup {
+  CarVertexGroupInfo HighHPInfo;
+  CarVertexGroupInfo LowHPInfo;
+  Pos3D offset3D;
+};
+
+struct VertexNormal {
+  int16_t x, y, z;
+  uint16_t vertexOffset;
+};
+vector<VertexNormal> getCarVertexNormals(Node* root);
