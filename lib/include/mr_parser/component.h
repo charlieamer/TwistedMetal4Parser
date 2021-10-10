@@ -14,6 +14,7 @@ struct Component : public Namable
   int bufferSize() const;
   void appendToFile(vector<byte_t> &fileBuffer) const;
 
+  string getDataAsString() const;
   template<typename T>
   T getDataAs() const {
     if (sizeof(T) > data.size()) {

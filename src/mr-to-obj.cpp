@@ -101,7 +101,9 @@ struct FaceWithExtraInfo {
 
 struct CarFaceWithExtraInfo : FaceWithExtraInfo<CarFace, VertexWithNormalAndUV> {};
 
-struct MapFaceWithExtraInfo : FaceWithExtraInfo<MapFaceInfo, VertexWithColorAndUV> {};
+struct MapFaceWithExtraInfo : FaceWithExtraInfo<MapFaceInfo, VertexWithColorAndUV> {
+  string belongingDestroyableName;
+};
 
 string textureNameFromShader(const MapFaceWithExtraInfo& face) {
   UvRect uv(face.shader, face.vc.size());
@@ -270,11 +272,26 @@ void convertTexture(vector<T>& facesExtra, const MapTexture& texture, const MapT
   lodepng::encode(mapFileName + ".png", (unsigned char*)(void*)outputAtlas.data(), width, height);
 }
 
+map<uint32_t, string> getDestroyableFaceIndices(Node* destroyableRoot) {
+  map<uint32_t, string> ret;
+  for (Node child : destroyableRoot->children) {
+    if (child.getAttributeByName("displayEmbedded")->getDataAs<uint32_t>()) {
+      auto values = child.getAttributeByName("displayFaceInfo")->getDataAsVector<uint32_t>();
+      // first 5 numbers are some meta data about sizes
+      for (size_t i=5; i<values.size(); i++) {
+        ret[values[i]] = child.name;
+      }
+    }
+  }
+  return ret;
+}
+
 vector<MapFaceWithExtraInfo> buildFacesExtra(
   const vector<SquareInfo>& squares,
   const vector<MapFaceInfo>& faces,
   const vector<Pos3D>& vertices,
-  const vector<ShaderInfo>& shaders
+  const vector<ShaderInfo>& shaders,
+  const map<uint32_t, string>& destroyableFaceIndices
 ) {
   vector<MapFaceWithExtraInfo> ret;
   for (const SquareInfo& square : squares) {
@@ -299,6 +316,10 @@ vector<MapFaceWithExtraInfo> buildFacesExtra(
         vc.col = hasColor ? face.colors[j] : Color();
         vc.hasColor = hasColor;
         faceExtra.vc.push_back(vc);
+      }
+      const auto destroyableFaceIndex = destroyableFaceIndices.find(faceExtra.face.offsetInBuffer);
+      if (destroyableFaceIndex != destroyableFaceIndices.end()) {
+        faceExtra.belongingDestroyableName = destroyableFaceIndex->second;
       }
       ret.push_back(faceExtra);
     }
@@ -387,8 +408,15 @@ void outputNormals(ostream& out, const vector<CarFaceWithExtraInfo> facesExtra) 
 
 void outputFaces(ostream& out, const vector<MapFaceWithExtraInfo> facesExtra, const vector<VertexWithColorAndUV> allVertices) {
   int uvCount = 0;
+  string lastDestroyableName = "NO GROUP BY DEFAULT";
   for (const auto& face : facesExtra) {
     UvRect uv(face.shader, face.vc.size());
+    if (face.belongingDestroyableName != lastDestroyableName) {
+      string groupForOutput = (face.belongingDestroyableName.length() == 0) ? "default" : face.belongingDestroyableName;
+      out << "g " << groupForOutput << endl;
+    }
+    lastDestroyableName = face.belongingDestroyableName;
+
     if (face.face.vertexIndicesInMapSquare.size() == 3) {
       out << "f " << (find(allVertices.begin(), allVertices.end(), face.vc[2]) - allVertices.begin()) + 1 << "/"
                     << uvCount + 1 << " "
@@ -443,13 +471,21 @@ void outputFaces(ostream& out, const vector<CarFaceWithExtraInfo> facesExtra, co
   }
 }
 
+void outputWeaponList(ofstream& out, Node* weaponRoot) {
+  for (Node& child : weaponRoot->children) {
+    const auto pos = child.getAttributeByName("pos")->getDataAsVector<int16_t>();
+    out << child.name << " " <<
+           child.getAttributeByName("type")->getDataAsString() << " " <<
+           -pos[0]/1000.0 << " " << -pos[1]/1000.0 << " " << pos[2]/1000.0 << endl;
+  }
+}
+
 void tryConvertMapFile(string mrPath) {
   Node *root = LoadFromFile(mrPath.c_str());
   
   Node *texturesRoot = LoadFromFile(replaceFileExtension(mrPath, "IMG").c_str());
   MapTexture texture = getMapTexture(texturesRoot);
   MapTexture clut = getMapClut(texturesRoot);
-  throw runtime_error("Nope");
   cout << "Map texture: " << texture.header.halfWidth * 2 << " x " << texture.header.height << endl;
 
   vector<Pos3D> vertices = getListOfVerticesForMap(root);
@@ -461,7 +497,8 @@ void tryConvertMapFile(string mrPath) {
   vector<ShaderInfo> shaders = getListOfShaderInfoForMap(root);
   cout << shaders.size() << " shader infos\n";
 
-  vector<MapFaceWithExtraInfo> facesExtra = buildFacesExtra(squares, faces, vertices, shaders);
+  map<uint32_t, string> destroyableFaceIndices = getDestroyableFaceIndices(root->getChildByPath("objects/destroyable/instances/startup"));
+  vector<MapFaceWithExtraInfo> facesExtra = buildFacesExtra(squares, faces, vertices, shaders, destroyableFaceIndices);
 
   string mapFileName = getFileName(mrPath);
   convertTexture(facesExtra, texture, clut, mapFileName);
@@ -480,6 +517,9 @@ void tryConvertMapFile(string mrPath) {
 
   outputUVs(out, facesExtra);
   outputFaces(out, facesExtra, allVertices);
+
+  ofstream weaponsOut(replaceFileExtension(mrPath, "txt"));
+  outputWeaponList(weaponsOut, root->getChildByPath("objects/powerup/instances/startup"));
 }
 
 bool shouldGroupBeTranslated(string groupName) {

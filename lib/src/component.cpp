@@ -83,3 +83,7 @@ void Component::assignDataFromBuffer(const vector<byte_t> &buffer, size_t offset
       buffer.begin() + offset + nameLength + 12,
       buffer.begin() + offset + nameLength + 12 + lengthInBuffer);
 }
+
+string Component::getDataAsString() const {
+  return string((char*)data.data());
+}
