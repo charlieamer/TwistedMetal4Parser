@@ -22,12 +22,11 @@ You can extract all info inside .MR files using `mr-unzip.exe` program. Simply d
 In case you want location of powerups inside map, I've created a blender importer addon. To obtain it follow the following steps:
 
 1. Download addon from [here](https://github.com/charlieamer/TwistedMetal4Parser/releases/download/v1.1/tm4_weapon_location_importer.py)
-2. Download the file by click CTRL + S (or CMD + S if you are on mac).
-3. In your blender go to `Edit > Preferences > Add-ons` and click `Install...` button in upper right corner.
-4. Navigate to file you downloaded earler. It should be in your "Downloads"  with name `tm4_weapon_location_importer.py`
-5. Convert map .MR file using latest version of `mr-to-obj` program. You can obtain it in [the releases section](https://github.com/charlieamer/TwistedMetal4Parser/releases)
-6. Go to `File > Import > Import TM4 weapon locations`
-7. Navigate to where the .MR file was converted to .obj and find `YOUR_MAP_NAME.txt` file and click it.
+1. In your blender go to `Edit > Preferences > Add-ons` and click `Install...` button in upper right corner.
+1. Navigate to file you downloaded earler. It should be in your "Downloads"  with name `tm4_weapon_location_importer.py`
+1. Convert map .MR file using latest version of `mr-to-obj` program. You can obtain it in [the releases section](https://github.com/charlieamer/TwistedMetal4Parser/releases)
+1. Go to `File > Import > Import TM4 weapon locations`
+1. Navigate to where the .MR file was converted to .obj and find `YOUR_MAP_NAME.txt` file and click it.
 
 # mr-to-obj .Exe usage:
 If you decide to go through experience of converting maps yourself, here are the steps to do it:
