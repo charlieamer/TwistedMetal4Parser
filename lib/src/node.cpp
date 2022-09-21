@@ -6,9 +6,10 @@
 Node::Node(const vector<byte_t> &buffer, size_t offset)
 {
   loadName(buffer, offset, 4);
-  numChildren = buffer[offset + 1];
+  uint8_t numChildren = buffer[offset + 1];
+  uint16_t numAttributes;
   memcpy(&numAttributes, buffer.data() + offset + 2, sizeof(numAttributes));
-  offset += nameLength + 4;
+  offset += getNameLengthInBuffer() + 4;
 
   for (int i = 0; i < numAttributes; i++)
   {
@@ -25,6 +26,10 @@ Node::Node(const vector<byte_t> &buffer, size_t offset)
   }
 }
 
+Node::Node(string nodeName) {
+  name = nodeName;
+}
+
 void Node::printRecursively(int depth) const
 {
   for (int i = 0; i < depth; i++)
@@ -34,15 +39,15 @@ void Node::printRecursively(int depth) const
   cout << name << " cmp: ";
   for (size_t i = 0; i < components.size(); i++)
   {
-    cout << components[i].name;
-    if (components[i].unpackedZlibLength)
-    {
-      cout << "(" << components[i].lengthInBuffer << "," << components[i].data.size() << "), ";
-    }
-    else
-    {
+  //   cout << components[i].name;
+  //   if (components[i].unpackedZlibLength)
+  //   {
+  //     cout << "(" << components[i].lengthInBuffer << "," << components[i].data.size() << "), ";
+  //   }
+  //   else
+  //   {
       cout << "(" << components[i].data.size() << "), ";
-    }
+    // }
   }
   cout << endl;
   for (size_t i = 0; i < children.size(); i++)
@@ -53,7 +58,7 @@ void Node::printRecursively(int depth) const
 
 int Node::bufferSize() const
 {
-  int ret = 4 + nameLength;
+  int ret = 4 + getNameLengthInBuffer();
   for (size_t i = 0; i < components.size(); i++)
   {
     ret += components[i].bufferSize();
@@ -124,18 +129,7 @@ Component *Node::getAttributeByName(string name)
 
 Node *LoadFromFile(const char *path)
 {
-  ifstream infile(path, ios::binary);
-
-  if (infile.bad()) {
-    throw runtime_error("Unable to open file");
-  }
-
-  infile.seekg(0, std::ios::end);
-  size_t length = (size_t)infile.tellg();
-  infile.seekg(0, std::ios::beg);
-
-  vector<byte_t> buffer;
-  buffer.insert(buffer.begin(), istreambuf_iterator<char>(infile), istreambuf_iterator<char>());
+  auto buffer = loadFileToBuffer(path);
   if (buffer.size() == 0) {
     throw runtime_error("Empty file");
   }
@@ -144,7 +138,7 @@ Node *LoadFromFile(const char *path)
     //throw runtime_error("File magic header doesn't match");
   }
   buffer.erase(buffer.begin(), buffer.begin() + 4);
-  cout << length << " bytes\n";
+  cout << buffer.size() << " bytes\n";
 
   return new Node(buffer);
 }

@@ -2,7 +2,7 @@
 
 void Namable::loadName(const vector<byte_t> &buffer, size_t offset, int stringDataOffset)
 {
-  nameLength = buffer[offset];
+  size_t nameLength = buffer[offset];
 
   for (size_t i = 0; i < nameLength; i++)
   {

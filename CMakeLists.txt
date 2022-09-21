@@ -4,8 +4,14 @@ project(TwistedMetal4Parser)
 
 add_subdirectory(lib)
 
-add_executable(mr-unzip src/mr-info.cpp)
-target_link_libraries(mr-unzip mr_parser)
+add_executable(mr-unpackager src/mr-unpackager.cpp)
+target_link_libraries(mr-unpackager mr_parser)
+
+add_executable(mr-packager src/mr-packager.cpp)
+target_link_libraries(mr-packager mr_parser)
+
+add_executable(mr-diff src/mr-diff.cpp)
+target_link_libraries(mr-diff mr_parser)
 
 include(FetchContent)
 FetchContent_Declare(

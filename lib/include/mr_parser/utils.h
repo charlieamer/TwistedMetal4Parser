@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <string.h>
 using namespace std;
 #include "types.h"
 #include "node.h"
@@ -35,6 +36,7 @@ T GetIntFromBuffer(const vector<byte_t> &data, size_t offset = 0)
 }
 
 vector<string> splitString(string str, string sep);
+vector<byte_t> loadFileToBuffer(const char* path);
 
 struct Pos3D {
   int16_t x, y, z, unused;

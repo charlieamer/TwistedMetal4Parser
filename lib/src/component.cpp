@@ -7,10 +7,11 @@ Component::Component(const vector<byte_t> &buffer, size_t offset)
 {
   loadName(buffer, offset, 12);
   lengthInBuffer = *((uint32_t *)((void *)(buffer.data() + offset + 4)));
-  unpackedZlibLength = *((uint32_t *)((void *)(buffer.data() + offset + 8)));
+  uint32_t unpackedZlibLength =
+    *((uint32_t *)((void *)(buffer.data() + offset + 8)));
   if (unpackedZlibLength)
   {
-    assginDataFromZlib(buffer, offset);
+    assginDataFromZlib(buffer, offset, unpackedZlibLength);
   }
   else
   {
@@ -18,9 +19,16 @@ Component::Component(const vector<byte_t> &buffer, size_t offset)
   }
 }
 
+Component::Component(string componentName) {
+  name = componentName;
+}
+
 int Component::bufferSize() const
 {
-  return lengthInBuffer + nameLength + 12;
+  if (lengthInBuffer == -1) {
+    throw runtime_error("Length of component is indeterminate");
+  }
+  return lengthInBuffer + getNameLengthInBuffer() + 12;
 }
 
 void Component::appendToFile(vector<byte_t> &fileBuffer) const
@@ -60,14 +68,14 @@ void Component::appendToFile(vector<byte_t> &fileBuffer) const
   delete[] dataCompressed;
 }
 
-void Component::assginDataFromZlib(const vector<byte_t> &buffer, size_t offset)
+void Component::assginDataFromZlib(const vector<byte_t> &buffer, size_t offset, uint32_t unpackedZlibLength)
 {
   Bytef *uncompressedData = new Bytef[unpackedZlibLength];
   uLongf unpackedZlibLengthL = unpackedZlibLength;
   int result = uncompress(
       uncompressedData,
       &unpackedZlibLengthL,
-      (const Bytef *)(buffer.data() + offset + nameLength + 12),
+      (const Bytef *)(buffer.data() + offset + getNameLengthInBuffer() + 12),
       lengthInBuffer);
   if (result != Z_OK)
   {
@@ -80,8 +88,8 @@ void Component::assginDataFromZlib(const vector<byte_t> &buffer, size_t offset)
 void Component::assignDataFromBuffer(const vector<byte_t> &buffer, size_t offset)
 {
   data.assign(
-      buffer.begin() + offset + nameLength + 12,
-      buffer.begin() + offset + nameLength + 12 + lengthInBuffer);
+      buffer.begin() + offset + getNameLengthInBuffer() + 12,
+      buffer.begin() + offset + getNameLengthInBuffer() + 12 + lengthInBuffer);
 }
 
 string Component::getDataAsString() const {

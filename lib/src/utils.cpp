@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <iostream>
+#include <fstream>
 #include "mr_parser/utils.h"
 
 string replaceFileExtension(string fileName, string newExtension) {
@@ -57,6 +58,22 @@ vector<string> splitString(string target, string delim)
     v.push_back(target.substr(start));
   }
   return v;
+}
+
+vector<byte_t> loadFileToBuffer(const char* path) {
+  ifstream infile(path, ios::binary);
+
+  if (infile.bad()) {
+    throw runtime_error("Unable to open file");
+  }
+
+  infile.seekg(0, std::ios::end);
+  size_t length = (size_t)infile.tellg();
+  infile.seekg(0, std::ios::beg);
+
+  vector<byte_t> buffer;
+  buffer.insert(buffer.begin(), istreambuf_iterator<char>(infile), istreambuf_iterator<char>());
+  return buffer;
 }
 
 vector<Pos3D> getListOfVertices(Node* root, string path, string attribute) {

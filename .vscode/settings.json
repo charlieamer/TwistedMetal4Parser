@@ -46,6 +46,7 @@
     "xutility": "cpp",
     "vector": "cpp",
     "sstream": "cpp",
-    "filesystem": "cpp"
+    "filesystem": "cpp",
+    "*.tcc": "cpp"
   }
 }

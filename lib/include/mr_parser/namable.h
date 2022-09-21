@@ -7,7 +7,6 @@ using namespace std;
 struct Namable
 {
   string name;
-  size_t nameLength;
 
 protected:
   void loadName(const vector<byte_t> &buffer, size_t offset, int stringDataOffset);
