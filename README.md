@@ -54,6 +54,30 @@ What you can do is use program "Mesh Viewer" to open .obj files and then convert
 ## Missing textures / models in maps
 Not all meshes are converted because there are some meshes that are created in runtime (for example, train in neon city, upper part of crane in construction yard, etc.). That's why when you open .png file of maps, you'll see a lot of texture is missing/transparent. Those are accessed through game code in runtime and at the moment this tool can't inspect such textures/models.
 
+# Other utilities
+## mr-unpackager.exe
+This program "unzips" the .MR. Output folder is called `SAME_FILENAME.extracted`, and it will be located in the same folder as .MR file. For example, if you want to "unzip" `AXEL.MR`, it will be extracted to folder `AXEL.extracted`. **Existing files will be overwritten**.
+
+You can then edit or examine files if you want to.
+
+*Please keep all folders inside named `NODE_...`, because there are instances where a file and folder have same name, and this would create conflicts.*
+
+Usage: `mr-unpackager FILENAME.MR`
+
+## mr-packager.exe
+This program "zips" a folder into a .MR file. Output file will be called `SAME_FILENAME.MR`, and it will be located in the same folder as the input folder. **You MUST choose a folder that ends with .extracted**. For example, if you want to convert folder `AXEL.extracted`, it will be converted to file called `AXEL.MR`. **Existing .MR file will be overwritten**.
+
+If you modified something in folders, you can put back the modified .MR file back to CD image (or .iso file) and you'll have the modded game!!!
+
+*Please keep all folders inside named `NODE_...`, because there are instances where a file and folder have same name, and this would create conflicts.*
+
+Usage: `mr-packager FOLDERNAME.extracted`
+
+## mr-diff.exe
+This program tells you if two .MR files have same content. This actually goes through each node and component and checks if they are the same. **Only the frist found difference is shown in output**.
+
+Usage: `mr-diff FILE1.MR FILE2.MR`
+
 # Contact
 In case you ever need help with this program, contact me:
 Reddit: https://www.reddit.com/user/Guilty_Painter_4707
