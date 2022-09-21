@@ -4,6 +4,8 @@
 #include <map>
 #include <set>
 #include <lodepng.h>
+#include <math.h>
+#include <algorithm>
 using namespace std;
 
 #define VERT_OFFSET(offset) (startingVertexIndex + (uint16_t)offset)

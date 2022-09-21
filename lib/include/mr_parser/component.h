@@ -2,6 +2,7 @@
 #include "namable.h"
 #include <vector>
 #include <stdexcept>
+#include <string.h>
 using namespace std;
 
 struct Component : public Namable
