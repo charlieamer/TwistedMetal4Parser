@@ -47,6 +47,8 @@
     "vector": "cpp",
     "sstream": "cpp",
     "filesystem": "cpp",
-    "*.tcc": "cpp"
+    "*.tcc": "cpp",
+    "array": "cpp",
+    "string_view": "cpp"
   }
 }
