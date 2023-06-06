@@ -11,8 +11,8 @@ void recurseFolder(Node& node, path folder) {
   for (directory_iterator i(folder), end; i != end; ++i) {
     if (!is_directory(i->path())) {
       cout << i->path().relative_path().c_str() << endl;
-      auto buffer = loadFileToBuffer(i->path().relative_path().c_str());
-      Component component(i->path().filename());
+      auto buffer = loadFileToBuffer(i->path().relative_path().string().c_str());
+      Component component(i->path().filename().string().c_str());
       component.data = buffer;
       node.components.push_back(component);
     } else if (i->path().filename().string().substr(0, 5) == "NODE_") {

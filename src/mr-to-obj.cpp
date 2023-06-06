@@ -213,7 +213,7 @@ void setFaceUVs(T& face, const MapTextureHeader& textureHeader, int outputTextur
 }
 
 template<typename T>
-void fillTextureFace(const T& face, const MapTexture& texture, const MapTexture& clut, vector<vector<RGBA>>& output) {
+void fillTextureFace(const T& face, const MapTexture& texture, const MapTexture& clut, vector<vector<RGBA>>& output, vector<vector<RGBA>>& outputMask) {
   CLUT_MODE clutMode = face.shader.getClutMode();
   if (clutMode == CLUT_DIRECT) {
     cerr << "Unsupported CLUT mode" << endl;
@@ -244,6 +244,7 @@ void fillTextureFace(const T& face, const MapTexture& texture, const MapTexture&
         int x = u + (face.shader.getTexturePageX() - texture.header.offsetX) * mulX + uv.minu;
         int y = v + (face.shader.getTexturePageY() - texture.header.offsetY) + offY + uv.minv;
         output[x][y] = color;
+        outputMask[x][y] = {255, 255, 255, 255};
       } catch(invalid_coordinates_error) {
         cerr << "Invalid texture coordinates\n";
         return;
@@ -252,26 +253,37 @@ void fillTextureFace(const T& face, const MapTexture& texture, const MapTexture&
   }
 }
 
+void saveImage(vector<vector<RGBA>> pixels, string outputFilename) {
+  int width = pixels.size();
+  int height = (width > 0) ? pixels[0].size() : 0;
+  vector<RGBA> outputArray(width * height);
+  int pixelIndex = 0;
+  for (int y=0; y<height; y++) {
+    for (int x=0; x<width; x++) {
+      outputArray[pixelIndex++] = pixels[x][y];
+    }
+  }
+  lodepng::encode(outputFilename, (unsigned char*)(void*)outputArray.data(), width, height);
+}
+
 template<typename T>
 void convertTexture(vector<T>& facesExtra, const MapTexture& texture, const MapTexture& clut, string mapFileName) {
   int width = texture.header.halfWidth * 4;
   int height = texture.header.height * 2;
   vector<vector<RGBA>> atlas(width);
+  vector<vector<RGBA>> mask(width);
   for (auto& column : atlas) {
     column.resize(height);
   }
+  for (auto& column : mask) {
+    column.resize(height);
+  }
   for (auto& face : facesExtra) {
-    fillTextureFace(face, texture, clut, atlas);
+    fillTextureFace(face, texture, clut, atlas, mask);
     setFaceUVs(face, texture.header, width, height);
   }
-  vector<RGBA> outputAtlas(width * height);
-  int pixelIndex = 0;
-  for (int y=0; y<height; y++) {
-    for (int x=0; x<width; x++) {
-      outputAtlas[pixelIndex++] = atlas[x][y];
-    }
-  }
-  lodepng::encode(mapFileName + ".png", (unsigned char*)(void*)outputAtlas.data(), width, height);
+  saveImage(atlas, mapFileName + ".png");
+  // saveImage(mask, mapFileName + "-mask.png");
 }
 
 map<uint32_t, string> getDestroyableFaceIndices(Node* destroyableRoot) {
@@ -342,7 +354,7 @@ vector<OutType> extractVertices(const vector<InType>& facesExtra) {
   return ret;
 }
 
-ostream& operator<<(ostream& out, const vector<VertexWithColorAndUV>& vertices) {
+void outputVerticesWithColorAndUVs(ostream& out, const vector<VertexWithColorAndUV>& vertices) {
   for (const auto& vertex : vertices) {
     out << "v " << -vertex.pos.x / 1000.0f << " " << -vertex.pos.y / 1000.0f << " " << vertex.pos.z / 1000.0f;
     if (vertex.hasColor) {
@@ -352,15 +364,13 @@ ostream& operator<<(ostream& out, const vector<VertexWithColorAndUV>& vertices) 
     }
     out << endl;
   }
-  return out;
 }
 
-ostream& operator<<(ostream& out, const vector<VertexWithNormalAndUV>& vertices) {
+void outputVerticesWithNormalAndUVs(ostream& out, const vector<VertexWithNormalAndUV>& vertices) {
   for (const auto& vertex : vertices) {
     out << "v " << -vertex.pos.x / 10.0f << " " << -vertex.pos.y / 10.0f << " " << vertex.pos.z / 10.0f;
     out << endl;
   }
-  return out;
 }
 
 void outputMaterial(string mrFilePath) {
@@ -513,7 +523,7 @@ void tryConvertMapFile(string mrPath) {
   // extract vertices
   vector<VertexWithColorAndUV> allVertices = extractVertices<MapFaceWithExtraInfo, VertexWithColorAndUV>(facesExtra);
   // output vertices
-  out << allVertices;
+  outputVerticesWithColorAndUVs(out, allVertices);
 
   out << "usemtl atlas\n";
 
@@ -602,7 +612,7 @@ void tryConvertCarFile(string mrPath, bool extractHighHP) {
   // extract vertices
   vector<VertexWithNormalAndUV> allExtractedVertices = extractVertices<CarFaceWithExtraInfo, VertexWithNormalAndUV>(allFaces);
   // output vertices
-  out << allExtractedVertices;
+  outputVerticesWithNormalAndUVs(out, allExtractedVertices);
 
   outputNormals(out, allFaces);
   outputUVs(out, allFaces);
