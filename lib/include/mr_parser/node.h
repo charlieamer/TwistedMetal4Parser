@@ -16,5 +16,5 @@ struct Node : public Namable
   Component *getAttributeByName(string name);
 };
 
-Node *LoadFromFile(const char *path);
+Node *LoadFromFile(const char *path, bool printSize = true);
 void SaveToFile(Node *node, const char *fileName);

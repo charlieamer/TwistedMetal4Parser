@@ -14,6 +14,36 @@
       "cwd": "${workspaceFolder}/extracted",
       "environment": [],
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Packager",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${command:cmake.launchTargetPath}",
+      "args": ["C:\\Users\\amer_\\Downloads\\Twisted Metal 4\\DATA\\AMAZ_2.extracted"],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}/extracted",
+      "environment": [],
+    },
+    {
+      "name": "Unpackager",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${command:cmake.launchTargetPath}",
+      "args": ["C:\\Users\\amer_\\Dropbox\\iso\\DATA\\AMAZ_orig.MR"],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}/extracted",
+      "environment": [],
+    },
+    {
+      "name": "Type explorer",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "C:\\Users\\amer_\\Documents\\GitHub\\TwistedMetal4Parser\\build\\src\\util-explore-types\\util-explore-types.exe",
+      "args": ["F:\\DATA"],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}/extracted",
+      "environment": []
     }
   ]
 }

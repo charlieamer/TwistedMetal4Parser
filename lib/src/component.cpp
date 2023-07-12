@@ -2,10 +2,18 @@
 #include <zlib.h>
 #include "mr_parser/component.h"
 #include "mr_parser/utils.h"
+#include <map>
+#include <iostream>
+#include <set>
+using namespace std;
+
+map<int, set<string>> typeToNames;
 
 Component::Component(const vector<byte_t> &buffer, size_t offset)
 {
   loadName(buffer, offset, 12);
+  componentType = buffer[offset + 1];
+  typeParameter = *((int16_t *)((void *)(buffer.data() + offset + 2)));
   lengthInBuffer = *((uint32_t *)((void *)(buffer.data() + offset + 4)));
   uint32_t unpackedZlibLength =
     *((uint32_t *)((void *)(buffer.data() + offset + 8)));
@@ -34,9 +42,9 @@ int Component::bufferSize() const
 void Component::appendToFile(vector<byte_t> &fileBuffer) const
 {
   fileBuffer.push_back((byte_t)getNameLengthInBuffer());
-  fileBuffer.push_back(0xFF);
-  fileBuffer.push_back(0xFF);
-  fileBuffer.push_back(0xFF);
+  fileBuffer.push_back(componentType);
+  fileBuffer.push_back(typeParameter & 0xff);
+  fileBuffer.push_back((typeParameter >> 8) & 0xff);
 
   uLongf sizeDataCompressed = (uLongf)((data.size() * 1.1) + 12);
   byte_t *dataCompressed = (byte_t *)new byte_t[sizeDataCompressed];

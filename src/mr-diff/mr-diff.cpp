@@ -14,12 +14,15 @@ bool compareNamable(const T& a, const T& b) {
 
 template<typename T>
 bool compareNamableVector(vector<T>& a, vector<T>& b, const char* comparingThing) {
-  sort(a.begin(), a.end(), compareNamable<T>);
-  sort(b.begin(), b.end(), compareNamable<T>);
+  if (a.size() != b.size()) {
+    cout << "Different count of " << comparingThing << ". "
+         << a.size() << " vs " << b.size() << endl;
+    return false;
+  }
   for (int i=0; i<a.size(); i++) {
     if (a[i].name != b[i].name) {
       cout << comparingThing << "[" << i << "] have different names: "
-        << a[i].name << " vs " << b[i].name;
+        << a[i].name << " vs " << b[i].name << endl;
       return false;
     }
   }
@@ -37,6 +40,16 @@ bool compare(const Component& c1, const Component& c2) {
   if (c1.name != c2.name) {
     cout << "Components have different names: "
       << c1.name << " vs " << c2.name << endl;
+    return false;
+  }
+  if (c1.componentType != c2.componentType) {
+    cout << c1.name << " components have different types: "
+      << (int)c1.componentType << " vs " << (int)c2.componentType << endl;
+    return false;
+  }
+  if (c1.typeParameter != c2.typeParameter) {
+    cout << c1.name << " components have different type parameters: "
+      << (int)c1.typeParameter << " vs " << (int)c2.typeParameter << endl;
     return false;
   }
   if (c1.data != c2.data) {

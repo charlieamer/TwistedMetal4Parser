@@ -34,7 +34,7 @@ void Namable::appendNameToFile(vector<byte_t> &data) const
     }
     else
     {
-      data.push_back(0xFF);
+      data.push_back(0xFD);
     }
   }
 }

@@ -74,8 +74,9 @@ void Node::appendToFile(vector<byte_t> &data) const
 {
   data.push_back((byte_t)getNameLengthInBuffer());
   data.push_back((byte_t)children.size());
-  data.push_back((byte_t)components.size());
-  data.push_back(0);
+  uint16_t numComponents = components.size();
+  data.push_back((byte_t)(numComponents & 0xff));
+  data.push_back((byte_t)((numComponents >> 8) & 0xff));
   appendNameToFile(data);
   for (auto &attribute : components)
   {
@@ -127,18 +128,21 @@ Component *Node::getAttributeByName(string name)
   return nullptr;
 }
 
-Node *LoadFromFile(const char *path)
+Node *LoadFromFile(const char *path, bool printSize)
 {
   auto buffer = loadFileToBuffer(path);
   if (buffer.size() == 0) {
     throw runtime_error("Empty file");
   }
-  if (buffer[0] != 0x67 || buffer[1] != 0x00 || buffer[2] != 0xCC || buffer[3] != 0xCC)
+  if (buffer[0] != 0x67 || buffer[1] != 0x00 ||
+      (buffer[2] != 0xCC && buffer[2] != 0x00) ||
+      (buffer[3] != 0xCC && buffer[3] != 0x00))
   {
-    //throw runtime_error("File magic header doesn't match");
+    throw runtime_error("File magic header doesn't match");
   }
   buffer.erase(buffer.begin(), buffer.begin() + 4);
-  cout << buffer.size() << " bytes\n";
+  if (printSize)
+    cout << buffer.size() << " bytes\n";
 
   return new Node(buffer);
 }

@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <string.h>
+#include <algorithm>
 using namespace std;
 #include "types.h"
 #include "node.h"
@@ -9,6 +10,11 @@ using namespace std;
 string removeFileExtension(string filename);
 string replaceFileExtension(string fileName, string newExtension);
 string getFileName(string fullPath);
+
+template <typename T>
+inline bool inVector(const vector<T>& vec, const T& v) {
+  return find(vec.begin(), vec.end(), v) != vec.end();
+}
 
 template <typename T>
 void AppendToBuffer(vector<byte_t> &data, T value)

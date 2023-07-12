@@ -49,6 +49,24 @@
     "filesystem": "cpp",
     "*.tcc": "cpp",
     "array": "cpp",
-    "string_view": "cpp"
+    "string_view": "cpp",
+    "chrono": "cpp",
+    "bit": "cpp",
+    "clocale": "cpp",
+    "codecvt": "cpp",
+    "cstdarg": "cpp",
+    "ctime": "cpp",
+    "cwctype": "cpp",
+    "deque": "cpp",
+    "set": "cpp",
+    "unordered_map": "cpp",
+    "algorithm": "cpp",
+    "functional": "cpp",
+    "memory_resource": "cpp",
+    "numeric": "cpp",
+    "random": "cpp",
+    "ratio": "cpp",
+    "iomanip": "cpp",
+    "numbers": "cpp"
   }
 }
