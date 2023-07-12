@@ -158,8 +158,5 @@ void SaveToFile(Node *node, const char *fileName)
   data.push_back(0xCC);
   // other data
   node->appendToFile(data);
-  for (const char c : data)
-  {
-    out << c;
-  }
+  writeBytesToFile(out, data);
 }

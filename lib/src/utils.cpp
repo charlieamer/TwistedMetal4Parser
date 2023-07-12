@@ -1,7 +1,10 @@
 #include <stdexcept>
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <filesystem>
 #include "mr_parser/utils.h"
+using namespace std::filesystem;
 
 string replaceFileExtension(string fileName, string newExtension) {
   auto lastDot = fileName.find_last_of('.');
@@ -74,6 +77,33 @@ vector<byte_t> loadFileToBuffer(const char* path) {
   vector<byte_t> buffer;
   buffer.insert(buffer.begin(), istreambuf_iterator<char>(infile), istreambuf_iterator<char>());
   return buffer;
+}
+
+int convertStringToInt(const string& str, path forOutput, int defaultValue, int vmin, int vmax) {
+  std::istringstream iss(str);
+  int number;
+  if (iss >> number) {
+    if (number < vmin || number > vmax) {
+      cout << "WARNING: Number " << str << " is outside of allowed range.\n";
+      cout << "  Allowed numbers are (inclusive) " << vmin << " to " << vmax << "\n";
+      cout << "  This happened for file name: " << forOutput << endl;
+      return defaultValue;
+    } else {
+
+    }
+    return number;
+  } else {
+    cout << "WARNING: Unable to convert " << str << " to valid number.\n";
+    cout << "  This happened for file name: " << forOutput << endl;
+    return defaultValue;
+  }
+}
+
+void writeBytesToFile(ostream& out, vector<byte_t> bytes) {
+  for (const char c : bytes)
+  {
+    out << c;
+  }
 }
 
 vector<Pos3D> getListOfVertices(Node* root, string path, string attribute) {
@@ -276,7 +306,42 @@ vector<ShaderInfo> getListOfShaderInfoForMap(Node* root) {
   return ret;
 }
 
-MapTexture genericGetMapTexture(Node* textureRoot, string childPath, string attributeName, int forceHeight = -1) {
+
+vector<byte_t> MapTexture::convertToBytes() {
+  vector<byte_t> ret;
+  ret.push_back(header.offsetX & 0xff);
+  ret.push_back((header.offsetX >> 8) & 0xff);
+  ret.push_back(header.offsetY & 0xff);
+  ret.push_back((header.offsetY >> 8) & 0xff);
+  ret.push_back(header.halfWidth & 0xff);
+  ret.push_back((header.halfWidth >> 8) & 0xff);
+  ret.push_back(header.height & 0xff);
+  ret.push_back((header.height >> 8) & 0xff);
+  for (int y=0; y<header.height; y++) {
+    for (int x=0; x<header.halfWidth * 2; x++) {
+      ret.push_back(data[x][y]);
+    }
+  }
+  return ret;
+}
+
+MapTexture genericGetMapTexture(const vector<byte_t>& bytes) {
+  MapTexture ret;
+  memcpy(&ret.header, bytes.data(), sizeof(MapTextureHeader));
+  if (bytes.size() - sizeof(MapTextureHeader) != ret.header.halfWidth * 2 * ret.header.height ) {
+    throw runtime_error("invalide texture size");
+  }
+  ret.data = make2Dvector<byte_t>(ret.header.halfWidth * 2, ret.header.height);
+  size_t index = 0;
+  for (uint16_t y = 0; y < ret.header.height; y++) {
+    for (uint16_t x = 0; x < ret.header.halfWidth * 2; x++) {
+      ret.data[x][y] = bytes[sizeof(MapTextureHeader) + index++];
+    }
+  }
+  return ret;
+}
+
+MapTexture genericGetMapTexture(Node* textureRoot, string childPath, string attributeName) {
   Node* world = textureRoot->getChildByPath(childPath);
   if (world == nullptr) {
     throw runtime_error("node in texture not found.");
@@ -285,25 +350,7 @@ MapTexture genericGetMapTexture(Node* textureRoot, string childPath, string attr
   if (texture == nullptr) {
     throw runtime_error("node in texture doesn't contain texture data");
   }
-  MapTexture ret;
-  memcpy(&ret.header, texture->data.data(), sizeof(MapTextureHeader));
-  if (forceHeight != -1) {
-    ret.header.height = forceHeight;
-  }
-  if (texture->data.size() - sizeof(MapTextureHeader) != ret.header.halfWidth * 2 * ret.header.height ) {
-    throw runtime_error("invalide texture size");
-  }
-  ret.data.resize(ret.header.halfWidth * 2);
-  for (auto& column : ret.data) {
-    column.resize(ret.header.height);
-  }
-  size_t index = 0;
-  for (uint16_t y = 0; y < ret.header.height; y++) {
-    for (uint16_t x = 0; x < ret.header.halfWidth * 2; x++) {
-      ret.data[x][y] = texture->data[sizeof(MapTextureHeader) + index++];
-    }
-  }
-  return ret;
+  return genericGetMapTexture(texture->data);
 }
 
 MapTexture getMapTexture(Node* textureRoot) {

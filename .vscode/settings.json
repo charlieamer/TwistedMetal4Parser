@@ -67,6 +67,15 @@
     "random": "cpp",
     "ratio": "cpp",
     "iomanip": "cpp",
-    "numbers": "cpp"
+    "numbers": "cpp",
+    "charconv": "cpp",
+    "condition_variable": "cpp",
+    "forward_list": "cpp",
+    "list": "cpp",
+    "optional": "cpp",
+    "mutex": "cpp",
+    "semaphore": "cpp",
+    "stop_token": "cpp",
+    "thread": "cpp"
   }
 }

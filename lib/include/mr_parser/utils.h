@@ -3,13 +3,28 @@
 #include <string>
 #include <string.h>
 #include <algorithm>
-using namespace std;
+#include <filesystem>
 #include "types.h"
 #include "node.h"
+using namespace std;
+using namespace std::filesystem;
 
 string removeFileExtension(string filename);
 string replaceFileExtension(string fileName, string newExtension);
 string getFileName(string fullPath);
+
+void writeBytesToFile(ostream& out, vector<byte_t> bytes);
+
+template <typename T>
+vector<vector<T>> make2Dvector(int width, int height) {
+  vector<vector<T>> ret;
+  ret.resize(width);
+  for (auto& column : ret) {
+    column.resize(height);
+  }
+  return ret;
+}
+
 
 template <typename T>
 inline bool inVector(const vector<T>& vec, const T& v) {
@@ -43,6 +58,8 @@ T GetIntFromBuffer(const vector<byte_t> &data, size_t offset = 0)
 
 vector<string> splitString(string str, string sep);
 vector<byte_t> loadFileToBuffer(const char* path);
+
+int convertStringToInt(const string& str, path forOutput, int defaultValue, int vmin, int vmax);
 
 struct Pos3D {
   int16_t x, y, z, unused;
@@ -154,8 +171,10 @@ struct RGBA {
 struct MapTexture {
   MapTextureHeader header;
   vector<vector<byte_t>> data;
+  vector<byte_t> convertToBytes();
 };
 
+MapTexture genericGetMapTexture(const vector<byte_t>& bytes);
 MapTexture getMapTexture(Node* textureRoot);
 // http://www.psxdev.net/forum/viewtopic.php?t=953
 MapTexture getMapClut(Node* textureRoot);

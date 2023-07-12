@@ -27,7 +27,7 @@ void tryConvertMapFile(string mrPath) {
   vector<MapFaceWithExtraInfo> facesExtra = buildFacesExtra(squares, faces, vertices, shaders, destroyableFaceIndices);
 
   string mapFileName = getFileName(mrPath);
-  convertTexture(facesExtra, texture, clut, mapFileName);
+  convertTexture(facesExtra, texture, clut, removeFileExtension(mrPath));
 
   outputMaterial(mrPath);
 

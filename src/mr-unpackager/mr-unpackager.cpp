@@ -58,7 +58,7 @@ int main(int argc, const char *argv[])
     root->printRecursively();
     cout << "Root name is " << root->name << endl;
     
-    string folderName = replaceFileExtension(argv[1], "extracted");
+    string folderName = string(argv[1]) + ".extracted";
     mkd(folderName.c_str());
     cd(folderName.c_str());
     Extract(root);

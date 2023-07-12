@@ -47,6 +47,7 @@ void saveImage(vector<vector<RGBA>> pixels, string outputFilename) {
       outputArray[pixelIndex++] = pixels[x][y];
     }
   }
+  cout << "Saving image " << outputFilename << endl;
   lodepng::encode(outputFilename, (unsigned char*)(void*)outputArray.data(), width, height);
 }
 
