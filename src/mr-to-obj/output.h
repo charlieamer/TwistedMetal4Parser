@@ -1,13 +1,14 @@
 #pragma once
 #include <iostream>
 #include "geometry.h"
+#include "textures.h"
 using namespace std;
 
 void outputVerticesWithColorAndUVs(ostream& out, const vector<VertexWithColorAndUV>& vertices);
 
 void outputVerticesWithNormalAndUVs(ostream& out, const vector<VertexWithNormalAndUV>& vertices);
 
-void outputMaterial(string mrFilePath);
+void outputMaterial(path outputFolder, string mapName, int numIslands);
 
 template<typename T>
 void outputUVs(ostream& out, const vector<T> facesExtra) {
@@ -34,3 +35,38 @@ void outputFaces(ostream& out, const vector<MapFaceWithExtraInfo> facesExtra, co
 void outputFaces(ostream& out, const vector<CarFaceWithExtraInfo> facesExtra, const vector<VertexWithNormalAndUV> allVertices, int faceOffset, int numFaces);
 
 void outputWeaponList(ofstream& out, Node* weaponRoot);
+
+// returns array of islands in atlas
+template<typename T>
+vector<Rect> convertTexture(
+  vector<T>& facesExtra, const MapTexture& texture,
+  const MapTexture& clut, path outputFolder, string mapName
+) {
+  int width = texture.header.halfWidth * 4;
+  int height = texture.header.height * 2;
+  vector<vector<RGBA>> atlas(width);
+  vector<vector<RGBA>> mask(width);
+  for (auto& column : atlas) {
+    column.resize(height);
+  }
+  for (auto& column : mask) {
+    column.resize(height);
+  }
+  for (auto& face : facesExtra) {
+    fillTextureFace(face, texture, clut, atlas, mask);
+  }
+  auto islands = findIslands(mask);
+
+  for (int i=0; i<islands.size(); i++) {
+    auto theCut = cutTexture(atlas, islands[i]);
+    stringstream s;
+    s << outputFolder.string() << "/" << "island-" << i << ".png";
+    saveImage(theCut, s.str());
+  }
+  for (auto& face : facesExtra) {
+    setFaceUVs(face, texture.header, width, height, islands);
+  }
+  saveImage(atlas, (outputFolder / (mapName + ".png")).string());
+  // saveImage(mask, mapFileName + "-mask.png");
+  return islands;
+}

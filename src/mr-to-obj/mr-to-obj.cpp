@@ -7,12 +7,17 @@
 using namespace std;
 
 void tryConvertMapFile(string mrPath) {
+  string mapName = getFileName(mrPath);
+  path outputFolder = mrPath;
+  outputFolder = outputFolder.parent_path() / ("OBJ-" + mapName);
+  mkd(outputFolder.string().c_str());
+
   Node *root = LoadFromFile(mrPath.c_str());
   
   Node *texturesRoot = LoadFromFile(replaceFileExtension(mrPath, "IMG").c_str());
   MapTexture texture = getMapTexture(texturesRoot);
   MapTexture clut = getMapClut(texturesRoot);
-  cout << "Map texture: " << texture.header.halfWidth * 2 << " x " << texture.header.height << endl;
+  cout << "Map texture: " << texture.header.halfWidth << " x " << texture.header.height << endl;
 
   vector<Pos3D> vertices = getListOfVerticesForMap(root);
   cout << vertices.size() << " vertices\n";
@@ -26,13 +31,12 @@ void tryConvertMapFile(string mrPath) {
   map<uint32_t, string> destroyableFaceIndices = getDestroyableFaceIndices(root->getChildByPath("objects/destroyable/instances/startup"));
   vector<MapFaceWithExtraInfo> facesExtra = buildFacesExtra(squares, faces, vertices, shaders, destroyableFaceIndices);
 
-  string mapFileName = getFileName(mrPath);
-  convertTexture(facesExtra, texture, clut, removeFileExtension(mrPath));
+  auto islands = convertTexture(facesExtra, texture, clut, outputFolder, mapName);
 
-  outputMaterial(mrPath);
+  outputMaterial(outputFolder, mapName, islands.size());
 
-  ofstream out(replaceFileExtension(mrPath, "obj"), ios::binary);
-  out << "mtllib " << mapFileName << ".mtl\n";
+  ofstream out(outputFolder / (mapName + ".obj"), ios::binary);
+  out << "mtllib " << mapName << ".mtl\n";
 
   // extract vertices
   vector<VertexWithColorAndUV> allVertices = extractVertices<MapFaceWithExtraInfo, VertexWithColorAndUV>(facesExtra);
@@ -44,7 +48,7 @@ void tryConvertMapFile(string mrPath) {
   outputUVs(out, facesExtra);
   outputFaces(out, facesExtra, allVertices);
 
-  ofstream weaponsOut(replaceFileExtension(mrPath, "txt"));
+  ofstream weaponsOut(outputFolder / (mapName + ".txt"));
   outputWeaponList(weaponsOut, root->getChildByPath("objects/powerup/instances/startup"));
 }
 
@@ -95,6 +99,11 @@ map<string, vector<CarFaceWithExtraInfo>> buildCarFacesExtra(
 }
 
 void tryConvertCarFile(string mrPath, bool extractHighHP) {
+  string carName = getFileName(mrPath);
+  path outputFolder = mrPath;
+  outputFolder = outputFolder.parent_path() / ("OBJ-" + carName);
+  mkd(outputFolder.string().c_str());
+
   Node *root = LoadFromFile(mrPath.c_str());
 
   if (!extractHighHP) {
@@ -108,7 +117,7 @@ void tryConvertCarFile(string mrPath, bool extractHighHP) {
   cout << vertices.size() << " vertices\n";
   cout << faces.size() << " faces\n";
   
-  ofstream out(replaceFileExtension(mrPath, "obj"), ios::binary);
+  ofstream out(outputFolder / (carName + ".obj"), ios::binary);
   auto facesExtra = buildCarFacesExtra(vertices, faces, normals, root, extractHighHP);
   vector<CarFaceWithExtraInfo> allFaces;
   for (const auto& it : facesExtra) {
@@ -116,12 +125,10 @@ void tryConvertCarFile(string mrPath, bool extractHighHP) {
   }
   MapTexture texture = getCarTexture(root);
 
-  string mapFileName = getFileName(mrPath);
-  convertTexture(allFaces, texture, texture, removeFileExtension(mrPath));
-  out << "mtllib " << mapFileName << ".mtl\n";
-  out << "usemtl atlas\n";
+  auto islands = convertTexture(allFaces, texture, texture, outputFolder, carName);
+  out << "mtllib " << carName << ".mtl\n";
 
-  outputMaterial(mrPath);
+  outputMaterial(outputFolder, carName, islands.size());
 
   // extract vertices
   vector<VertexWithNormalAndUV> allExtractedVertices = extractVertices<CarFaceWithExtraInfo, VertexWithNormalAndUV>(allFaces);

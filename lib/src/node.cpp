@@ -132,7 +132,9 @@ Node *LoadFromFile(const char *path, bool printSize)
 {
   auto buffer = loadFileToBuffer(path);
   if (buffer.size() == 0) {
-    throw runtime_error("Empty file");
+    string tmp = "Empty file, or file doesn't exist: ";
+    tmp += path;
+    throw runtime_error(tmp.c_str());
   }
   if (buffer[0] != 0x67 || buffer[1] != 0x00 ||
       (buffer[2] != 0xCC && buffer[2] != 0x00) ||

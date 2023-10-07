@@ -21,14 +21,16 @@ void outputVerticesWithNormalAndUVs(ostream& out, const vector<VertexWithNormalA
   }
 }
 
-void outputMaterial(string mrFilePath) {
-  ofstream outMtl(replaceFileExtension(mrFilePath, "mtl"), ios::binary);
-  outMtl  << "newmtl atlas\n"
-          << "   Ka 1.000 1.000 1.000\n"
-          << "   Kd 1.000 1.000 1.000\n"
-          << "   Ks 0.000 0.000 0.000\n"
-          << "   map_Kd " << getFileName(mrFilePath) << ".png\n"
-          << "\n";
+void outputMaterial(path outputFolder, string mapName, int numIslands) {
+  ofstream outMtl(outputFolder / (mapName + ".mtl"), ios::binary);
+  for (int i=0; i<numIslands; i++) {
+    outMtl  << "newmtl island-" << i << "\n"
+            << "   Ka 1.000 1.000 1.000\n"
+            << "   Kd 1.000 1.000 1.000\n"
+            << "   Ks 0.000 0.000 0.000\n"
+            << "   map_Kd island-" << i << ".png\n"
+            << "\n";
+  }
 }
 
 void outputNormals(ostream& out, const vector<CarFaceWithExtraInfo> facesExtra) {
@@ -51,7 +53,12 @@ void outputNormals(ostream& out, const vector<CarFaceWithExtraInfo> facesExtra) 
 void outputFaces(ostream& out, const vector<MapFaceWithExtraInfo> facesExtra, const vector<VertexWithColorAndUV> allVertices) {
   int uvCount = 0;
   string lastDestroyableName = "NO GROUP BY DEFAULT";
+  size_t lastUsedIsland = -1;
   for (const auto& face : facesExtra) {
+    if (face.belongingIslandIndex != lastUsedIsland) {
+      out << "usemtl island-" << face.belongingIslandIndex << endl;
+      lastUsedIsland = face.belongingIslandIndex;
+    }
     UvRect uv(face.shader, face.vc.size());
     if (face.belongingDestroyableName != lastDestroyableName) {
       string groupForOutput = (face.belongingDestroyableName.length() == 0) ? "default" : face.belongingDestroyableName;
@@ -87,8 +94,13 @@ void outputFaces(ostream& out, const vector<CarFaceWithExtraInfo> facesExtra, co
   for (int i=0; i<faceOffset; i++) {
     uvCount += facesExtra[i].vc.size();
   }
+  size_t lastUsedIsland = -1;
   for (int i=faceOffset; i < faceOffset + numFaces; i++) {
     const auto& face = facesExtra[i];
+    if (face.belongingIslandIndex != lastUsedIsland) {
+      out << "usemtl island-" << face.belongingIslandIndex << endl;
+      lastUsedIsland = face.belongingIslandIndex;
+    }
     UvRect uv(face.shader, face.vc.size());
     if (face.vc.size() == 3) {
       out << "f " << (find(allVertices.begin(), allVertices.end(), face.vc[2]) - allVertices.begin()) + 1 << "/"

@@ -29,17 +29,18 @@ In case you want location of powerups inside map, I've created a blender importe
 1. Navigate to where the .MR file was converted to .obj and find `YOUR_MAP_NAME.txt` file and click it.
 
 # mr-to-obj .Exe usage:
-If you decide to go through experience of converting maps yourself, here are the steps to do it:
+If you decide to go through experience of converting map/cars yourself, here are the steps to do it:
 
 1. Extract TM4 files in a folder, and remember where you extracted it.
 1. Download mr-to-obj.exe (you can find it bellow this text), and remember where you saved it.
-1. Go to a map/care file you want to open (found in DATA folder of step 1).
+1. Go to a map/car file you want to open (found in DATA folder of step 1).
 1. Right click the map/car (for example, YARD.MR), click "Open with".
 1. Click More Apps -> Look for another app on this PC
 1. Find the program that you downloaded at step 2.
 1. You will find converted .OBJ file in the same folder as .MR file was found.
 1. In order to view .OBJ file, you can use: Blender, Windows 3D viewer (just double click by default) or for example upload it here: https://www.creators3d.com/online-viewer
 
+*NOTE: If you are trying to convert map, make sure there is .IMG file in the same folder as your map file.*
 
 # Map conversion limitations
 ## Map details (teleports, etc)

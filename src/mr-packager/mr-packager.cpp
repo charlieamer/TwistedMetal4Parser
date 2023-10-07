@@ -6,6 +6,25 @@
 
 using namespace std;
 
+std::string decode(const std::string& str) {
+    std::ostringstream os;
+    for (size_t i = 0; i < str.size(); ++i) {
+        if (str[i] == '%' && i + 2 < str.size()) {
+            int value;
+            std::istringstream is(str.substr(i + 1, 2));
+            if (is >> std::hex >> value) {
+                os << static_cast<char>(value);
+                i += 2;
+            } else {
+                os << '%';
+            }
+        } else {
+            os << str[i];
+        }
+    }
+    return os.str();
+}
+
 vector<string> readOrder(path pth, string filename) {
   ifstream order(pth / filename);
   vector<string> ret;
@@ -32,8 +51,13 @@ bool findFileWithSamePrefix(path pathToFile, path& result) {
 
   // Iterate over all files in the directory
   for (const auto& entry : directory_iterator(parentDir)) {
+    string entryFname = entry.path().filename().string();
+    // remove any suffixes from entryFname
+    if (entryFname.find("--") != string::npos)
+      entryFname = entryFname.substr(0, entryFname.find("--"));
+
     // If the current file starts with the same name
-    if (entry.path().filename().string().substr(0, baseName.size()) == baseName) {
+    if (entryFname == baseName) {
       result = entry.path();
       return true;
     }
@@ -51,7 +75,7 @@ bool appendComponent(path expectedPath, Node& node, bool checkOnly) {
   }
   auto filePath = pathToFile.string();
   auto splits = splitString(pathToFile.filename().string(), "--");
-  auto componentName = splits[0];
+  auto componentName = decode(splits[0]);
   if (node.getAttributeByName(componentName) != nullptr) {
     return false;
   }
@@ -67,9 +91,6 @@ bool appendComponent(path expectedPath, Node& node, bool checkOnly) {
   }
   // cout << filePath << endl;
   auto buffer = loadFileToBuffer(filePath.c_str());
-  if (buffer.size() == 0) {
-    cout << "WARNING: " << filePath << " has 0 bytes after loading.\n";
-  }
   Component component(componentName);
   component.data = buffer;
   if (splits.size() > 1 && splits[1].length()) {
@@ -151,6 +172,14 @@ int main(int argc, const char *argv[])
   }
   string fileOutput = removeFileExtension(argv[1]);
   Node rootNode("Root");
+  // if we see file "root_name.txt", rename our root node
+  path rootRenamePath(argv[1]);
+  rootRenamePath /= "root_name.txt";
+  if (exists(rootRenamePath)) {
+    auto buf = loadFileToBuffer(rootRenamePath.string().c_str());
+    rootNode.name = string(buf.begin(), buf.end());
+  }
+
   recurseFolder(rootNode, path(argv[1]) / "NODE_Root");
   SaveToFile(&rootNode, fileOutput.c_str());
   cout << "Saved to " << fileOutput << endl;

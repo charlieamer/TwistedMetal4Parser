@@ -6,6 +6,21 @@
 #include <filesystem>
 #include "types.h"
 #include "node.h"
+
+#if defined(_WIN32)
+#include <direct.h>
+// MSDN recommends against using getcwd & chdir names
+#define cwd _getcwd
+#define cd _chdir
+#define mkd _mkdir
+#else
+#include "unistd.h"
+#include <sys/stat.h>
+#define cwd getcwd
+#define cd chdir
+#define mkd(path) mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
+#endif
+
 using namespace std;
 using namespace std::filesystem;
 

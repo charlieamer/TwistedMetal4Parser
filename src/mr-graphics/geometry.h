@@ -3,43 +3,8 @@
 #include <vector>
 #include <map>
 #include <algorithm>
+#include "graphics-structs.h"
 using namespace std;
-
-struct VertexWithUV {
-  Pos3D pos;
-  float u, v;
-};
-
-struct VertexWithColorAndUV : VertexWithUV {
-  Color col;
-  bool hasColor;
-  bool operator==(const VertexWithColorAndUV& other) const;
-};
-
-struct VertexWithNormalAndUV : VertexWithUV {
-  Pos3D normal;
-  bool operator==(const VertexWithNormalAndUV& other) const;
-};
-
-struct UvRect {
-  uint8_t minu, maxu, minv, maxv;
-  UvRect(const ShaderInfo& shader, size_t numVertices);
-  int getTexCoordIndex(uint8_t u, uint8_t v) const;
-  int getTexCoordIndex(const ShaderInfo& shader, size_t vertexIndex) const;
-};
-
-template<typename FaceType, typename VertexType>
-struct FaceWithExtraInfo {
-  FaceType face;
-  ShaderInfo shader;
-  vector<VertexType> vc;
-};
-
-struct CarFaceWithExtraInfo : FaceWithExtraInfo<CarFace, VertexWithNormalAndUV> {};
-
-struct MapFaceWithExtraInfo : FaceWithExtraInfo<MapFaceInfo, VertexWithColorAndUV> {
-  string belongingDestroyableName;
-};
 
 map<uint32_t, string> getDestroyableFaceIndices(Node* destroyableRoot);
 vector<MapFaceWithExtraInfo> buildFacesExtra(

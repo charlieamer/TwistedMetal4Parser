@@ -4,6 +4,7 @@
 #include "colors.h"
 #include <exception>
 #include <string>
+#include "graphics-structs.h"
 using namespace std;
 
 string textureNameFromShader(const MapFaceWithExtraInfo& face);
@@ -11,34 +12,39 @@ class invalid_coordinates_error : public exception {};
 uint8_t getPixelIndex(const MapTexture& texture, int x, int y, int minu, int minv, uint16_t texpageX, uint16_t texpageY, CLUT_MODE clutMode);
 void saveImage(vector<vector<RGBA>> pixels, string outputFilename);
 void outputTextureError(string text);
+vector<Rect> findIslands(const vector<vector<RGBA>> &mask);
+vector<vector<RGBA>> cutTexture(const vector<vector<RGBA>>& image, const Rect& rect);
+int getBelongingIslandIndex(const vector<Rect>& rects, const Point& point);
+PointF relativeCoordinates(const Rect& rect, const Point& point);
 
 template<typename T>
-void setFaceUVs(T& face, const MapTextureHeader& textureHeader, int outputTextureWidth, int outputTextureHeight) {
+void setFaceUVs(T& face, const MapTextureHeader& textureHeader,
+  int outputTextureWidth, int outputTextureHeight, const vector<Rect>& islands
+) {
   CLUT_MODE clutMode = face.shader.getClutMode();
   int mulX = (clutMode == CLUT_4_BIT) ? 4 : 2;
   int offY = (clutMode == CLUT_4_BIT) ? 0 : textureHeader.height;
-  int x;
-  int y;
-  float halfPixelW = 1.0f / (float)outputTextureWidth / 2.0f;
-  float halfPixelH = 1.0f / (float)outputTextureHeight / 2.0f;
-  x = face.shader.u1 + (face.shader.getTexturePageX() - textureHeader.offsetX) * mulX;
-  y = face.shader.v1 + (face.shader.getTexturePageY() - textureHeader.offsetY) + offY;
-  face.vc[0].u = (float)x / (float)outputTextureWidth + halfPixelW;
-  face.vc[0].v = (float)y / (float)outputTextureHeight + halfPixelH;
+  Rect island;
+  Point p;
+  int &x = p.x;
+  int &y = p.y;
 
-  x = face.shader.u2 + (face.shader.getTexturePageX() - textureHeader.offsetX) * mulX;
-  y = face.shader.v2 + (face.shader.getTexturePageY() - textureHeader.offsetY) + offY;
-  face.vc[1].u = (float)x / (float)outputTextureWidth + halfPixelW;
-  face.vc[1].v = (float)y / (float)outputTextureHeight + halfPixelH;
-  x = face.shader.u3 + (face.shader.getTexturePageX() - textureHeader.offsetX) * mulX;
-  y = face.shader.v3 + (face.shader.getTexturePageY() - textureHeader.offsetY) + offY;
-  face.vc[2].u = (float)x / (float)outputTextureWidth + halfPixelW;
-  face.vc[2].v = (float)y / (float)outputTextureHeight + halfPixelH;
+  float pixelW = 1.0f / (float)outputTextureWidth;
+  float pixelH = 1.0f / (float)outputTextureHeight;
+
+  p = face.getAtlasUV(textureHeader, 0);
+  face.belongingIslandIndex = getBelongingIslandIndex(islands, p);
+  island = islands[face.belongingIslandIndex];
+
+  p = face.getAtlasUV(textureHeader, 0);
+  face.vc[0].setUV(relativeCoordinates(island, p));
+  p = face.getAtlasUV(textureHeader, 1);
+  face.vc[1].setUV(relativeCoordinates(island, p));
+  p = face.getAtlasUV(textureHeader, 2);
+  face.vc[2].setUV(relativeCoordinates(island, p));
   if (face.vc.size() > 3) {
-    x = face.shader.u4 + (face.shader.getTexturePageX() - textureHeader.offsetX) * mulX;
-    y = face.shader.v4 + (face.shader.getTexturePageY() - textureHeader.offsetY) + offY;
-    face.vc[3].u = (float)x / (float)outputTextureWidth + halfPixelW;
-    face.vc[3].v = (float)y / (float)outputTextureHeight + halfPixelH;
+    p = face.getAtlasUV(textureHeader, 3);
+    face.vc[3].setUV(relativeCoordinates(island, p));
   }
 }
 
@@ -81,24 +87,4 @@ void fillTextureFace(const T& face, const MapTexture& texture, const MapTexture&
       }
     }
   }
-}
-
-template<typename T>
-void convertTexture(vector<T>& facesExtra, const MapTexture& texture, const MapTexture& clut, string mapFileName) {
-  int width = texture.header.halfWidth * 4;
-  int height = texture.header.height * 2;
-  vector<vector<RGBA>> atlas(width);
-  vector<vector<RGBA>> mask(width);
-  for (auto& column : atlas) {
-    column.resize(height);
-  }
-  for (auto& column : mask) {
-    column.resize(height);
-  }
-  for (auto& face : facesExtra) {
-    fillTextureFace(face, texture, clut, atlas, mask);
-    setFaceUVs(face, texture.header, width, height);
-  }
-  saveImage(atlas, mapFileName + ".png");
-  // saveImage(mask, mapFileName + "-mask.png");
 }
