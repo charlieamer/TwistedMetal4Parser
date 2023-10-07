@@ -79,21 +79,24 @@ This program tells you if two .MR files have same content. This actually goes th
 
 Usage: `mr-diff FILE1.MR FILE2.MR`
 
-## palette-to-png.exe and png-to-palette.exe (Editing palettes/colors in textures)
-Before using these 2 programs, first unpackage .IMG file. Inside you need to find .clt--12 file. This is the palette.
+## Palette editing (a.k.a. editing texture colors) (palette-to-png.exe and png-to-palette.exe)
+Before using these 2 programs, first unpackage .IMG file. Inside you need to find `.clt--12` file. This is the palette.
 
-* `palette-to-png`: provide path to a file which ends with .clt--12 and it will convert it to png. The file will be saved like this: palette__originalname.clt--12__offsetx__offsety. It is important that you don't rename the png file.
-* `png-to-palette`: provide path to png file and it will convert it to .clt--12 file.
+- palette-to-png: provide path to a file which ends with `.clt--12` and it will convert it to png. The file will be saved like this: `palette__originalname.clt--12__offsetx__offsety`. **It is important that you don't rename the png file**.
+- png-to-palette: provide path to png file and it will convert it to `.clt--12` file.
+
 The flow to edit palette works like this:
-```
-mr-unpackager PATH_TO.IMG
-palette-to-png.exe PATH_TO_CLT
-edit the png with gimp/photoshop/whatever
-png-to-palette.exe PATH_TO_PNG
-mr-packager PATH_TO.IMG.extracted
-Re-package iso/whatever is your flow
-```
-Enjoy
+1. `mr-unpackager.exe` PATH_TO.IMG
+2. `palette-to-png.exe` PATH_TO_CLT
+3. edit the png with gimp/photoshop/whatever
+4. `png-to-palette.exe` PATH_TO_PNG
+5. `mr-packager.exe` PATH_TO.IMG.extracted
+6. Re-package iso/whatever is your flow
+7. Enjoy!
+
+Example:
+
+![image (1)](https://github.com/charlieamer/TwistedMetal4Parser/assets/5943275/3354021a-8bc3-40a2-8d01-dd1bc42b1347)
 
 # Contact
 In case you ever need help with this program, contact me:
