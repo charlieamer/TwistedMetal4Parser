@@ -79,6 +79,22 @@ This program tells you if two .MR files have same content. This actually goes th
 
 Usage: `mr-diff FILE1.MR FILE2.MR`
 
+## palette-to-png.exe and png-to-palette.exe (Editing palettes/colors in textures)
+Before using these 2 programs, first unpackage .IMG file. Inside you need to find .clt--12 file. This is the palette.
+
+* `palette-to-png`: provide path to a file which ends with .clt--12 and it will convert it to png. The file will be saved like this: palette__originalname.clt--12__offsetx__offsety. It is important that you don't rename the png file.
+* `png-to-palette`: provide path to png file and it will convert it to .clt--12 file.
+The flow to edit palette works like this:
+```
+mr-unpackager PATH_TO.IMG
+palette-to-png.exe PATH_TO_CLT
+edit the png with gimp/photoshop/whatever
+png-to-palette.exe PATH_TO_PNG
+mr-packager PATH_TO.IMG.extracted
+Re-package iso/whatever is your flow
+```
+Enjoy
+
 # Contact
 In case you ever need help with this program, contact me:
 Reddit: https://www.reddit.com/user/Guilty_Painter_4707
